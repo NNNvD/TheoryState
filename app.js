@@ -136,9 +136,17 @@ async function main() {
     }).catch((err) => console.error("Submission failed:", err));
   });
 
-  document.addEventListener("DOMContentLoaded", function() {
-    survey.render(document.getElementById("surveyContainer"));
-  });
+function renderNow() {
+  const el = document.getElementById("surveyContainer");
+  if (!el) throw new Error("surveyContainer not found");
+  survey.render(el);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", renderNow);
+} else {
+  renderNow();
+}
 }
 
 main().catch(err => {
