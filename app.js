@@ -5,7 +5,7 @@
  * 2) (Optional) Update SURVEY_YEAR and INSTRUMENT_VERSION annually.
  */
 
-const APPS_SCRIPT_WEBAPP_URL = "PASTE_YOUR_APPS_SCRIPT_WEBAPP_URL_HERE";
+const APPS_SCRIPT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxFyvSXpJZXtVfsLcxcLte8Yo7GXdG8nM7PQVTQIYZm2S-qAoqPFwtPSdAH9LL18C8m/exec";
 const SURVEY_YEAR = 2026;
 const INSTRUMENT_VERSION = "2026.1";
 
