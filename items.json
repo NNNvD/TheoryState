@@ -1,0 +1,110 @@
+[
+  {
+    "table": 1,
+    "slug": "current_quality_of_theories",
+    "name": "Current quality of theories",
+    "description": "Theories are vague, verbal, and weakly predictive; they function more as rhetoric than precise explanatory systems."
+  },
+  {
+    "table": 1,
+    "slug": "status_of_theory_development",
+    "name": "Status of theory development",
+    "description": "Theory construction is rare and undervalued; description is often mistaken for theorizing."
+  },
+  {
+    "table": 1,
+    "slug": "derivation_of_testable_hypotheses",
+    "name": "Derivation of testable hypotheses",
+    "description": "Hypotheses are rarely deduced from (formal) theory."
+  },
+  {
+    "table": 1,
+    "slug": "how_results_inform_theory",
+    "name": "How results inform theory",
+    "description": "Findings rarely falsify or refine theory."
+  },
+  {
+    "table": 1,
+    "slug": "lack_of_disambiguation",
+    "name": "Lack of disambiguation",
+    "description": "Constructs are undefined and boundary conditions are unclear."
+  },
+  {
+    "table": 1,
+    "slug": "role_of_math_logic_and_simulations",
+    "name": "Role of math, logic, and simulations",
+    "description": "Formal modeling remains peripheral despite its value for explicating mechanisms and deriving testable predictions."
+  },
+  {
+    "table": 1,
+    "slug": "division_of_labor",
+    "name": "Division of labor",
+    "description": "Lack of specializations for theoretical work vs. empirical research."
+  },
+  {
+    "table": 1,
+    "slug": "overemphasis_on_methods",
+    "name": "Overemphasis on methods",
+    "description": "Methodological sophistication eclipses conceptual integration; flexible analyses are rewarded."
+  },
+  {
+    "table": 1,
+    "slug": "measurement_vs_substantive_theory",
+    "name": "Measurement vs. substantive theory",
+    "description": "Data models (factor, network) are mistaken for mechanisms."
+  },
+  {
+    "table": 1,
+    "slug": "fragmentation_across_subfields",
+    "name": "Fragmentation across subfields",
+    "description": "Incompatible constructs and vocabularies impede integration."
+  },
+  {
+    "table": 1,
+    "slug": "lack_of_cumulative_record_keeping",
+    "name": "Lack of cumulative record-keeping",
+    "description": "Few organized comparisons, versioning, and updating of theories."
+  },
+  {
+    "table": 1,
+    "slug": "incentives_favor_discovery_over_understanding",
+    "name": "Incentives favor discovery over understanding",
+    "description": "Journals and funders reward empirical novelty and volume over theory development and conceptual integration."
+  },
+  {
+    "table": 1,
+    "slug": "educational_neglect",
+    "name": "Educational neglect",
+    "description": "Curricula underweight theory formation, logic, and modeling."
+  },
+  {
+    "table": 2,
+    "slug": "low_replication_rates",
+    "name": "Low replication rates",
+    "description": "Vague theories can fit any data, false positives included, and there are too few good theories from which to derive hypotheses."
+  },
+  {
+    "table": 2,
+    "slug": "lack_of_cumulative_progress",
+    "name": "Lack of cumulative progress",
+    "description": "Disconnected findings pile up without synthesis. Theories are not updated, and many overlapping theories survive or “fade away” too slowly."
+  },
+  {
+    "table": 2,
+    "slug": "uninterpretable_results",
+    "name": "Uninterpretable results",
+    "description": "Ambiguous constructs and auxiliaries undermine inference."
+  },
+  {
+    "table": 2,
+    "slug": "overproduction_of_isolated_effects",
+    "name": "Overproduction of isolated effects",
+    "description": "A lack of integration and explanatory connections between effects under unifying theories."
+  },
+  {
+    "table": 2,
+    "slug": "weak_guidance_for_application_and_credibility",
+    "name": "Weak guidance for application & credibility",
+    "description": "Imprecise theories offer limited leverage, do not allow the derivation of predictions, and undermine trust."
+  }
+]

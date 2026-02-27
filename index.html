@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Theory-in-Psychology Sentiment Survey</title>
+
+  <!-- SurveyJS resources (vanilla HTML/JS) -->
+  <link href="https://unpkg.com/survey-core/survey-core.min.css" type="text/css" rel="stylesheet" />
+  <script type="text/javascript" src="https://unpkg.com/survey-core/survey.core.min.js"></script>
+  <script type="text/javascript" src="https://unpkg.com/survey-js-ui/survey-js-ui.min.js"></script>
+
+  <style>
+    body { max-width: 900px; margin: 0 auto; padding: 18px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    .header { margin-bottom: 10px; }
+    .muted { color: #555; }
+    .small { font-size: 0.95rem; }
+    .footer { margin-top: 18px; font-size: 0.9rem; color: #555; }
+    code { background: #f6f6f6; padding: 2px 4px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Theory-in-Psychology Sentiment Survey</h1>
+    <p class="muted small">
+      Please rate each item on (i) agreement that it is the case and (ii) severity (problem/cause).
+      Responses are anonymous unless you voluntarily include identifying information elsewhere.
+    </p>
+  </div>
+
+  <div id="surveyContainer"></div>
+
+  <div class="footer">
+    <p>
+      If you encounter issues submitting, please copy the URL and let the organizers know.
+    </p>
+  </div>
+
+  <script type="text/javascript" src="./app.js"></script>
+</body>
+</html>
