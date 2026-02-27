@@ -18,7 +18,6 @@ const RATE_VALUES = [
   { value: 5, text: "5" },
   { value: 6, text: "6" },
   { value: 7, text: "7" },
-  { value: "NA", text: "N/A" }
 ];
 
 function slugify(str) {
@@ -60,7 +59,8 @@ function itemPanel(item) {
         type: "rating",
         name: prefix + "_agreement",
         title: "Agreement",
-        isRequired: true,
+        // isRequired: true,
+        displayMode: "buttons",
         rateValues: RATE_VALUES,
         minRateDescription: "Strongly disagree",
         maxRateDescription: "Strongly agree"
@@ -69,7 +69,8 @@ function itemPanel(item) {
         type: "rating",
         name: prefix + "_severity",
         title: "Severity",
-        isRequired: true,
+        // isRequired: true,
+        displayMode: "buttons",
         rateValues: RATE_VALUES,
         minRateDescription: severityEndpoints.min,
         maxRateDescription: severityEndpoints.max
