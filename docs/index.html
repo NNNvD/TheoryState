@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TheoryState Dashboard</title>
+    <style>
+      :root { font-family: Arial, Helvetica, sans-serif; }
+      body { margin: 0; background: #f8fafc; color: #0f172a; }
+      header { padding: 16px 20px; background: #0f172a; color: white; }
+      main { padding: 12px; }
+      .note { margin: 0 0 12px; font-size: 14px; }
+      iframe { width: 100%; height: calc(100vh - 120px); border: 0; background: white; border-radius: 8px; }
+      a { color: #2563eb; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>TheoryState Survey Dashboard</h1>
+    </header>
+    <main>
+      <p class="note">
+        This page embeds the live Streamlit dashboard. If the embed is blocked by your browser,
+        open it directly: <a id="dashboard-link" href="#" target="_blank" rel="noreferrer">Open dashboard</a>.
+      </p>
+      <iframe id="dashboard-frame" title="TheoryState Dashboard"></iframe>
+    </main>
+
+    <script>
+      const DASHBOARD_URL = "https://theorystate.streamlit.app/";
+      document.getElementById("dashboard-frame").src = DASHBOARD_URL;
+      document.getElementById("dashboard-link").href = DASHBOARD_URL;
+    </script>
+  </body>
+</html>
