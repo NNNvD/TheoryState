@@ -3,33 +3,46 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>TheoryState Dashboard</title>
+    <title>TheoryState Dashboard Redirect</title>
     <style>
       :root { font-family: Arial, Helvetica, sans-serif; }
-      body { margin: 0; background: #f8fafc; color: #0f172a; }
-      header { padding: 16px 20px; background: #0f172a; color: white; }
-      main { padding: 12px; }
-      .note { margin: 0 0 12px; font-size: 14px; }
-      iframe { width: 100%; height: calc(100vh - 120px); border: 0; background: white; border-radius: 8px; }
-      a { color: #2563eb; }
+      body { margin: 0; display: grid; place-items: center; min-height: 100vh; background: #f8fafc; color: #0f172a; }
+      .card { max-width: 640px; padding: 24px; background: white; border-radius: 12px; box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08); }
+      h1 { margin-top: 0; }
+      a.button {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 10px 14px;
+        background: #2563eb;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+      }
+      code { background: #e2e8f0; padding: 2px 4px; border-radius: 4px; }
     </style>
   </head>
   <body>
-    <header>
-      <h1>TheoryState Survey Dashboard</h1>
-    </header>
-    <main>
-      <p class="note">
-        This page embeds the live Streamlit dashboard. If the embed is blocked by your browser,
-        open it directly: <a id="dashboard-link" href="#" target="_blank" rel="noreferrer">Open dashboard</a>.
+    <main class="card">
+      <h1>TheoryState Dashboard</h1>
+      <p>
+        Redirecting to the live Streamlit app...
       </p>
-      <iframe id="dashboard-frame" title="TheoryState Dashboard"></iframe>
+      <p>
+        If you are not redirected in a few seconds, use the button below.
+      </p>
+      <a id="dashboard-link" class="button" href="#" rel="noreferrer">Open dashboard</a>
+      <p>
+        Note: Streamlit hosting often blocks iframe embedding, so this GitHub Pages site uses a direct redirect.
+      </p>
     </main>
 
     <script>
       const DASHBOARD_URL = "https://theorystate.streamlit.app/";
-      document.getElementById("dashboard-frame").src = DASHBOARD_URL;
-      document.getElementById("dashboard-link").href = DASHBOARD_URL;
+      const link = document.getElementById("dashboard-link");
+      link.href = DASHBOARD_URL;
+      setTimeout(() => {
+        window.location.replace(DASHBOARD_URL);
+      }, 250);
     </script>
   </body>
 </html>

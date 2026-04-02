@@ -77,7 +77,7 @@ GitHub Pages cannot run Streamlit server code directly. Instead:
 3. Enable Pages in GitHub repo settings (source: GitHub Actions).
 4. Push to `main` (or `work`) to trigger `.github/workflows/pages.yml`.
 
-The Pages site will show an embedded dashboard iframe and a direct link fallback.
+The Pages site now performs a direct redirect to the Streamlit app (with a manual link fallback) to avoid iframe/redirect issues.
 
 ## Deployment
 ### Streamlit Community Cloud
@@ -87,4 +87,4 @@ Deploy with:
 - entrypoint: `app.py`
 
 ### GitHub Pages
-After enabling Pages, the `pages.yml` workflow publishes `docs/` so the repo website can display the embedded Streamlit dashboard.
+After enabling Pages, the `pages.yml` workflow publishes `docs/` so the repo website redirects visitors to the live Streamlit dashboard.
