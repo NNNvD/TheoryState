@@ -7,6 +7,9 @@ This repository contains a Streamlit dashboard and a repeatable cleaning pipelin
 - `scripts/clean_data.py` — cleaning pipeline and derived data generation
 - `data/raw/` — raw Microsoft Forms exports (never modify in place)
 - `data/derived/` — generated outputs for dashboard + analysis
+- `.github/workflows/clean-data.yml` — GitHub Actions workflow to run cleaning automatically
+- `.github/workflows/pages.yml` — GitHub Pages deployment workflow for `docs/`
+- `docs/index.html` — GitHub Pages wrapper that embeds the deployed Streamlit app
 - `requirements.txt` — Python dependencies
 
 ## First run
@@ -52,8 +55,36 @@ The dashboard includes:
 - **Table 2**: item selector, mean/median/SD/N table, and interactive distribution plot
 - **Methods / Data Quality**: QC logic, exclusions, retained variables, outputs, assumptions
 
+## Automating data cleaning (GitHub Actions)
+A workflow is included at `.github/workflows/clean-data.yml`.
+
+It runs automatically when:
+- files under `data/raw/` change, or
+- `scripts/clean_data.py` changes.
+
+You can also run it manually from the Actions tab (`workflow_dispatch`).
+
+The job:
+1. installs dependencies,
+2. runs `python scripts/clean_data.py`,
+3. uploads `data/derived/` as an Actions artifact (`derived-data`).
+
+## Showing the dashboard on GitHub Pages
+GitHub Pages cannot run Streamlit server code directly. Instead:
+
+1. Deploy the dashboard to **Streamlit Community Cloud** (or another Streamlit host).
+2. Set the hosted app URL in `docs/index.html` (`DASHBOARD_URL`).
+3. Enable Pages in GitHub repo settings (source: GitHub Actions).
+4. Push to `main` (or `work`) to trigger `.github/workflows/pages.yml`.
+
+The Pages site will show an embedded dashboard iframe and a direct link fallback.
+
 ## Deployment
-Deploy on Streamlit Community Cloud with:
+### Streamlit Community Cloud
+Deploy with:
 - repository: this GitHub repo
 - branch: your target branch
 - entrypoint: `app.py`
+
+### GitHub Pages
+After enabling Pages, the `pages.yml` workflow publishes `docs/` so the repo website can display the embedded Streamlit dashboard.
