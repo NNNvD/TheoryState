@@ -1,0 +1,8 @@
+metric,value
+data_source,derived_fallback
+raw_rows,
+rows_after_qc,52
+dashboard_columns,53
+numeric_columns,49
+long_rows,2496
+unique_items,13
