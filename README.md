@@ -88,3 +88,11 @@ Deploy with:
 
 ### GitHub Pages
 After enabling Pages, the `pages.yml` workflow publishes `docs/` so the repo website redirects visitors to the live Streamlit dashboard.
+
+### If Pages still shows README instead of dashboard
+- In repo **Settings → Pages**, either:
+  - set source to **GitHub Actions** (recommended), or
+  - set source to **Deploy from a branch** and folder **/(root)** (this repo now includes a root `index.html` redirect).
+- Ensure the Pages URL opens `/index.html` and not a cached README view.
+
+
