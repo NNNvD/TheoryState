@@ -17,9 +17,18 @@ LONG_FILE = DERIVED_DIR / "responses_long.csv"
 ITEM_DICTIONARY_FILE = DERIVED_DIR / "item_dictionary.csv"
 
 FILTER_PROMPTS = {
-    "work_status": "Do you currently work as a psychological scientist (i.e., conduct psychological research or teach psychology/psychological science at a university or research institute)?",
-    "education": "What is your highest completed university-level education in psychology/psychological science?",
-    "subfield": "Which option best describes the subfield you currently work in most of the time?",
+    "work_status": {
+        "prompt": "Do you currently work as a psychological scientist (i.e., conduct psychological research or teach psychology/psychological science at a university or research institute)?",
+        "label": "Work status",
+    },
+    "education": {
+        "prompt": "What is your highest completed university-level education in psychology/psychological science?",
+        "label": "Education",
+    },
+    "subfield": {
+        "prompt": "Which option best describes the subfield you currently work in most of the time?",
+        "label": "Subfield",
+    },
 }
 
 DIMENSION_LABELS = {
@@ -30,12 +39,20 @@ DIMENSION_LABELS = {
     "causal_magnitude": "How significant is the causal contribution to this phenomenon?",
 }
 
+DIMENSION_SHORT = {
+    "common_subfield": "Common (subfield)",
+    "common_general": "Common (psych science)",
+    "harmfulness": "Harmfulness",
+    "causal_agreement": "Theory contributes",
+    "causal_magnitude": "Causal significance",
+}
+
 COLOR_MAP = {
-    DIMENSION_LABELS["common_subfield"]: "#1f77b4",  # blue
-    DIMENSION_LABELS["common_general"]: "#ff7f0e",  # orange
-    DIMENSION_LABELS["harmfulness"]: "#2ca02c",  # green
-    DIMENSION_LABELS["causal_agreement"]: "#9467bd",  # purple
-    DIMENSION_LABELS["causal_magnitude"]: "#d62728",  # red
+    DIMENSION_SHORT["common_subfield"]: "#1f77b4",  # blue
+    DIMENSION_SHORT["common_general"]: "#ff7f0e",  # orange
+    DIMENSION_SHORT["harmfulness"]: "#2ca02c",  # green
+    DIMENSION_SHORT["causal_agreement"]: "#9467bd",  # purple
+    DIMENSION_SHORT["causal_magnitude"]: "#d62728",  # red
 }
 
 
@@ -65,8 +82,8 @@ def find_filter_columns(df: pd.DataFrame) -> dict[str, str]:
     """Match required global filter prompts to source columns."""
     norm_to_col = {normalize_text(c): c for c in df.columns}
     matched: dict[str, str] = {}
-    for key, prompt in FILTER_PROMPTS.items():
-        target = normalize_text(prompt)
+    for key, prompt_meta in FILTER_PROMPTS.items():
+        target = normalize_text(prompt_meta["prompt"])
         direct = norm_to_col.get(target)
         if direct:
             matched[key] = direct
@@ -85,14 +102,12 @@ def build_display_labels(item_dict: pd.DataFrame) -> dict[str, str]:
     def choose_label(row: pd.Series) -> str:
         core_claim = str(row.get("core_claim", "")).strip()
         item_label = str(row.get("item_label", "")).strip()
-        generic_core = bool(re.fullmatch(r"(?i)phenomenon\s*\d+", core_claim))
-        generic_item = bool(re.fullmatch(r"(?i)item\s*\d+", item_label))
-        if core_claim and not generic_core:
+        if core_claim:
             return core_claim
-        if item_label and not generic_item:
+        if item_label:
             return item_label
         item_number = int(row.get("item_number", 0))
-        return f"Survey phenomenon {item_number:02d}"
+        return f"Item {item_number:02d}"
 
     dedup["display_label"] = dedup.apply(choose_label, axis=1)
     return dict(zip(dedup["item_id"], dedup["display_label"]))
@@ -121,6 +136,7 @@ def summarize_by_dimension(filtered_long: pd.DataFrame, table: int, ordered_dime
     )
     summary["ci95"] = ci95_from_std(summary["std"], summary["N"]).fillna(0)
     summary["dimension_label"] = summary["dimension"].map(DIMENSION_LABELS)
+    summary["dimension_short"] = summary["dimension"].map(DIMENSION_SHORT)
     summary["dimension"] = pd.Categorical(summary["dimension"], categories=ordered_dimensions, ordered=True)
     return summary.sort_values("dimension")
 
@@ -143,6 +159,7 @@ def summarize_by_item_and_dimension(
     )
     summary["ci95"] = ci95_from_std(summary["std"], summary["N"]).fillna(0)
     summary["dimension_label"] = summary["dimension"].map(DIMENSION_LABELS)
+    summary["dimension_short"] = summary["dimension"].map(DIMENSION_SHORT)
     summary["item_name"] = summary["item_id"].map(item_labels).fillna(summary["item_id"])
 
     sort_basis = (
@@ -164,12 +181,12 @@ def render_global_filters(dashboard_df: pd.DataFrame, filter_cols: dict[str, str
     """Render global sidebar filters with defaults set to all options."""
     st.sidebar.header("Global filters")
     selections: dict[str, list[str]] = {}
-    for key, prompt in FILTER_PROMPTS.items():
+    for key, prompt_meta in FILTER_PROMPTS.items():
         col = filter_cols.get(key)
         if not col:
             continue
         options = sorted(dashboard_df[col].dropna().astype(str).unique().tolist())
-        selections[key] = st.sidebar.multiselect(prompt, options=options, default=options)
+        selections[key] = st.sidebar.multiselect(prompt_meta["label"], options=options, default=options)
     return selections
 
 
@@ -188,46 +205,55 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
     table1_summary = summarize_by_dimension(filtered_long, table=1, ordered_dimensions=table1_dims)
     table2_summary = summarize_by_dimension(filtered_long, table=2, ordered_dimensions=table2_dims)
 
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("Table 1 aggregate means")
-        fig_t1 = px.bar(
-            table1_summary,
-            x="dimension_label",
-            y="mean_score",
-            color="dimension_label",
-            color_discrete_map=COLOR_MAP,
-            text=table1_summary["mean_score"].round(2).map(lambda v: f"{v:.2f}"),
-            labels={"dimension_label": "Question type", "mean_score": "Mean response (1–7)"},
-        )
-        fig_t1.update_traces(
-            textposition="outside",
-            error_y=dict(type="data", array=table1_summary["ci95"].to_numpy(), visible=True),
-            hovertemplate="%{x}<br>Mean=%{y:.2f}<br>95% CI ±%{customdata[1]:.2f}<br>N=%{customdata[0]}<extra></extra>",
-            customdata=table1_summary[["N", "ci95"]].to_numpy(),
-        )
-        fig_t1.update_layout(showlegend=False, yaxis_range=[1, 7], margin=dict(t=20, b=40))
-        st.plotly_chart(fig_t1, use_container_width=True)
+    st.subheader("Table 1 aggregate means")
+    fig_t1 = px.bar(
+        table1_summary,
+        x="dimension_short",
+        y="mean_score",
+        color="dimension_short",
+        color_discrete_map=COLOR_MAP,
+        text=table1_summary["mean_score"].round(2).map(lambda v: f"{v:.2f}"),
+        labels={"dimension_short": "Question type", "mean_score": "Mean response (1–7)"},
+        template="plotly_white",
+    )
+    fig_t1.update_traces(
+        textposition="outside",
+        error_y=dict(type="data", array=table1_summary["ci95"].to_numpy(), visible=True),
+        hovertemplate="%{customdata[2]}<br>Mean=%{y:.2f}<br>95% CI ±%{customdata[1]:.2f}<br>N=%{customdata[0]}<extra></extra>",
+        customdata=table1_summary[["N", "ci95", "dimension_label"]].to_numpy(),
+    )
+    fig_t1.update_layout(
+        yaxis_range=[0.9, 7.1],
+        margin=dict(t=20, b=40),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""),
+        height=440,
+    )
+    st.plotly_chart(fig_t1, use_container_width=True)
 
-    with c2:
-        st.subheader("Table 2 aggregate means")
-        fig_t2 = px.bar(
-            table2_summary,
-            x="dimension_label",
-            y="mean_score",
-            color="dimension_label",
-            color_discrete_map=COLOR_MAP,
-            text=table2_summary["mean_score"].round(2).map(lambda v: f"{v:.2f}"),
-            labels={"dimension_label": "Question type", "mean_score": "Mean response (1–7)"},
-        )
-        fig_t2.update_traces(
-            textposition="outside",
-            error_y=dict(type="data", array=table2_summary["ci95"].to_numpy(), visible=True),
-            hovertemplate="%{x}<br>Mean=%{y:.2f}<br>95% CI ±%{customdata[1]:.2f}<br>N=%{customdata[0]}<extra></extra>",
-            customdata=table2_summary[["N", "ci95"]].to_numpy(),
-        )
-        fig_t2.update_layout(showlegend=False, yaxis_range=[1, 7], margin=dict(t=20, b=40))
-        st.plotly_chart(fig_t2, use_container_width=True)
+    st.subheader("Table 2 aggregate means")
+    fig_t2 = px.bar(
+        table2_summary,
+        x="dimension_short",
+        y="mean_score",
+        color="dimension_short",
+        color_discrete_map=COLOR_MAP,
+        text=table2_summary["mean_score"].round(2).map(lambda v: f"{v:.2f}"),
+        labels={"dimension_short": "Question type", "mean_score": "Mean response (1–7)"},
+        template="plotly_white",
+    )
+    fig_t2.update_traces(
+        textposition="outside",
+        error_y=dict(type="data", array=table2_summary["ci95"].to_numpy(), visible=True),
+        hovertemplate="%{customdata[2]}<br>Mean=%{y:.2f}<br>95% CI ±%{customdata[1]:.2f}<br>N=%{customdata[0]}<extra></extra>",
+        customdata=table2_summary[["N", "ci95", "dimension_label"]].to_numpy(),
+    )
+    fig_t2.update_layout(
+        yaxis_range=[0.9, 7.1],
+        margin=dict(t=20, b=40),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""),
+        height=440,
+    )
+    st.plotly_chart(fig_t2, use_container_width=True)
 
     st.subheader("Respondent-level relationship between Table 1 and Table 2 aggregates")
     scatter_base = filtered_long[filtered_long["dimension"].isin(["common_general", "causal_agreement"])].copy()
@@ -254,6 +280,7 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
             "causal_agreement": "Respondent average: Table 2 agreement that theory contributes (1–7)",
         },
         hover_data={"respondent_id": True, "common_general": ":.2f", "causal_agreement": ":.2f"},
+        template="plotly_white",
     )
 
     if len(respondent_scores) >= 2:
@@ -305,13 +332,14 @@ def render_table_page(
         summary,
         y="item_name",
         x="mean_score",
-        color="dimension_label",
+        color="dimension_short",
         barmode="group",
         orientation="h",
         color_discrete_map=COLOR_MAP,
         text=summary["mean_score"].round(2).map(lambda v: f"{v:.2f}"),
-        labels={"item_name": "Item", "mean_score": "Mean response (1–7)", "dimension_label": "Question type"},
+        labels={"item_name": "Item", "mean_score": "Mean response (1–7)", "dimension_short": "Question type"},
         hover_data={"item_name": True, "dimension_label": True, "N": True, "mean_score": ":.2f", "ci95": ":.2f"},
+        template="plotly_white",
     )
     fig.update_traces(
         textposition="outside",
@@ -322,7 +350,7 @@ def render_table_page(
         yaxis={"categoryorder": "array", "categoryarray": list(summary["item_name"].cat.categories[::-1])},
         height=620 if table == 1 else 480,
         margin=dict(l=20, r=20, t=20, b=20),
-        legend_title_text="Question type",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""),
     )
     st.plotly_chart(fig, use_container_width=True)
 
