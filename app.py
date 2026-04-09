@@ -315,7 +315,7 @@ def render_table_page(
     ordered_dimensions: list[str],
     item_labels: dict[str, str],
 ) -> None:
-    """Render table-specific grouped horizontal bar chart."""
+    """Render table-specific chart (Table 1 heatmap, Table 2 grouped bars)."""
     st.header(title)
     st.metric("Filtered sample size (N)", filtered_n)
 
@@ -328,30 +328,64 @@ def render_table_page(
         st.info("No responses available for this page with current filters.")
         return
 
-    fig = px.bar(
-        summary,
-        y="item_name",
-        x="mean_score",
-        color="dimension_short",
-        barmode="group",
-        orientation="h",
-        color_discrete_map=COLOR_MAP,
-        text=summary["mean_score"].round(2).map(lambda v: f"{v:.2f}"),
-        labels={"item_name": "Item", "mean_score": "Mean response (1–7)", "dimension_short": "Question type"},
-        hover_data={"item_name": True, "dimension_label": True, "N": True, "mean_score": ":.2f", "ci95": ":.2f"},
-        template="plotly_white",
-    )
-    fig.update_traces(
-        textposition="outside",
-        error_x=dict(type="data", array=summary["ci95"].to_numpy(), visible=True),
-    )
-    fig.update_layout(
-        xaxis_range=[1, 7],
-        yaxis={"categoryorder": "array", "categoryarray": list(summary["item_name"].cat.categories[::-1])},
-        height=620 if table == 1 else 480,
-        margin=dict(l=20, r=20, t=20, b=20),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""),
-    )
+    if table == 1:
+        heatmap_df = summary.pivot(index="item_name", columns="dimension_short", values="mean_score")
+        ci_df = summary.pivot(index="item_name", columns="dimension_short", values="ci95")
+        n_df = summary.pivot(index="item_name", columns="dimension_short", values="N")
+        label_df = summary.pivot(index="item_name", columns="dimension_short", values="dimension_label")
+        order = list(summary["item_name"].cat.categories)
+        heatmap_df = heatmap_df.reindex(order)
+        ci_df = ci_df.reindex(order)
+        n_df = n_df.reindex(order)
+        label_df = label_df.reindex(order)
+
+        fig = px.imshow(
+            heatmap_df,
+            color_continuous_scale="Blues",
+            zmin=1,
+            zmax=7,
+            aspect="auto",
+            text_auto=".2f",
+            labels={"x": "Question type", "y": "Item", "color": "Mean (1–7)"},
+        )
+        custom = np.dstack([ci_df.fillna(0).to_numpy(), n_df.fillna(0).to_numpy(), label_df.fillna("").to_numpy()])
+        fig.update_traces(
+            customdata=custom,
+            hovertemplate="Item: %{y}<br>%{customdata[2]}<br>Mean=%{z:.2f}<br>95% CI ±%{customdata[0]:.2f}<br>N=%{customdata[1]}<extra></extra>",
+        )
+        fig.update_layout(
+            template="plotly_white",
+            height=680,
+            margin=dict(l=20, r=20, t=20, b=20),
+            coloraxis_colorbar=dict(title="Mean (1–7)", len=0.85),
+            yaxis={"categoryorder": "array", "categoryarray": order[::-1]},
+            xaxis={"side": "top"},
+        )
+    else:
+        fig = px.bar(
+            summary,
+            y="item_name",
+            x="mean_score",
+            color="dimension_short",
+            barmode="group",
+            orientation="h",
+            color_discrete_map=COLOR_MAP,
+            text=summary["mean_score"].round(2).map(lambda v: f"{v:.2f}"),
+            labels={"item_name": "Item", "mean_score": "Mean response (1–7)", "dimension_short": "Question type"},
+            hover_data={"item_name": True, "dimension_label": True, "N": True, "mean_score": ":.2f", "ci95": ":.2f"},
+            template="plotly_white",
+        )
+        fig.update_traces(
+            textposition="outside",
+            error_x=dict(type="data", array=summary["ci95"].to_numpy(), visible=True),
+        )
+        fig.update_layout(
+            xaxis_range=[1, 7],
+            yaxis={"categoryorder": "array", "categoryarray": list(summary["item_name"].cat.categories[::-1])},
+            height=500,
+            margin=dict(l=20, r=20, t=20, b=20),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""),
+        )
     st.plotly_chart(fig, use_container_width=True)
 
 
