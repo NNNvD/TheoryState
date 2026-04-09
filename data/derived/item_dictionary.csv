@@ -1,0 +1,49 @@
+item_id,item_number,item_label,core_claim,table,dimension,dimension_label,raw_source_column
+item_01,1,Item 1,Phenomenon 1,2,causal_agreement,To what extent do you agree that insufficient theory development contributes to this phenomenon?,1. To what extent do you agree that insufficient theory development contributes to this phenomenon?  
+item_01,1,Item 1,Phenomenon 1,2,causal_magnitude,"Assuming this phenomenon occurs, how large is the causal contribution of insufficient theory development?","1. Assuming this phenomenon occurs, how large is the causal contribution of insufficient theory development?  "
+item_01,1,Item 1,Phenomenon 1,1,common_general,How common is this phenomenon in psychological science in general today?,1. How common is this phenomenon in psychological science in general today?
+item_01,1,Item 1,Phenomenon 1,1,common_subfield,How common is this phenomenon in your subfield today?,1. How common is this phenomenon in your subfield today?
+item_01,1,Item 1,Phenomenon 1,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","1. If this occurs, how harmful is this phenomenon for psychological science?  "
+item_02,2,Item 2,Phenomenon 2,2,causal_agreement,To what extent do you agree that insufficient theory development contributes to this phenomenon?,2. To what extent do you agree that insufficient theory development contributes to this phenomenon?  
+item_02,2,Item 2,Phenomenon 2,2,causal_magnitude,"Assuming this phenomenon occurs, how large is the causal contribution of insufficient theory development?","2. Assuming this phenomenon occurs, how large is the causal contribution of insufficient theory development?  "
+item_02,2,Item 2,Phenomenon 2,1,common_general,How common is this phenomenon in psychological science in general today?,2. How common is this phenomenon in psychological science in general today?
+item_02,2,Item 2,Phenomenon 2,1,common_subfield,How common is this phenomenon in your subfield today?,2. How common is this phenomenon in your subfield today?
+item_02,2,Item 2,Phenomenon 2,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","2. If this occurs, how harmful is this phenomenon for psychological science?  "
+item_03,3,Item 3,Phenomenon 3,2,causal_agreement,To what extent do you agree that insufficient theory development contributes to this phenomenon?,3. To what extent do you agree that insufficient theory development contributes to this phenomenon?  
+item_03,3,Item 3,Phenomenon 3,2,causal_magnitude,"Assuming this phenomenon occurs, how large is the causal contribution of insufficient theory development?","3. Assuming this phenomenon occurs, how large is the causal contribution of insufficient theory development?  "
+item_03,3,Item 3,Phenomenon 3,1,common_general,How common is this phenomenon in psychological science in general today?,3. How common is this phenomenon in psychological science in general today?
+item_03,3,Item 3,Phenomenon 3,1,common_subfield,How common is this phenomenon in your subfield today?,3. How common is this phenomenon in your subfield today?
+item_03,3,Item 3,Phenomenon 3,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","3. If this occurs, how harmful is this phenomenon for psychological science?  "
+item_04,4,Item 4,Phenomenon 4,2,causal_agreement,To what extent do you agree that insufficient theory development contributes to this phenomenon?,4. To what extent do you agree that insufficient theory development contributes to this phenomenon?  
+item_04,4,Item 4,Phenomenon 4,2,causal_magnitude,"Assuming this phenomenon occurs, how large is the causal contribution of insufficient theory development?","4. Assuming this phenomenon occurs, how large is the causal contribution of insufficient theory development?  "
+item_04,4,Item 4,Phenomenon 4,1,common_general,How common is this phenomenon in psychological science in general today?,4. How common is this phenomenon in psychological science in general today?
+item_04,4,Item 4,Phenomenon 4,1,common_subfield,How common is this phenomenon in your subfield today?,4. How common is this phenomenon in your subfield today?
+item_04,4,Item 4,Phenomenon 4,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","4. If this occurs, how harmful is this phenomenon for psychological science?  "
+item_05,5,Item 5,Phenomenon 5,2,causal_agreement,To what extent do you agree that insufficient theory development contributes to this phenomenon?,5. To what extent do you agree that insufficient theory development contributes to this phenomenon?  
+item_05,5,Item 5,Phenomenon 5,2,causal_magnitude,"Assuming this phenomenon occurs, how large is the causal contribution of insufficient theory development?","5. Assuming this phenomenon occurs, how large is the causal contribution of insufficient theory development?  "
+item_05,5,Item 5,Phenomenon 5,1,common_general,How common is this phenomenon in psychological science in general today?,5. How common is this phenomenon in psychological science in general today?
+item_05,5,Item 5,Phenomenon 5,1,common_subfield,How common is this phenomenon in your subfield today?,5. How common is this phenomenon in your subfield today?
+item_05,5,Item 5,Phenomenon 5,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","5. If this occurs, how harmful is this phenomenon for psychological science?  "
+item_06,6,Item 6,Phenomenon 6,1,common_general,How common is this phenomenon in psychological science in general today?,6. How common is this phenomenon in psychological science in general today?
+item_06,6,Item 6,Phenomenon 6,1,common_subfield,How common is this phenomenon in your subfield today?,6. How common is this phenomenon in your subfield today?
+item_06,6,Item 6,Phenomenon 6,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","6. If this occurs, how harmful is this phenomenon for psychological science?  "
+item_07,7,Item 7,Phenomenon 7,1,common_general,How common is this phenomenon in psychological science in general today?,7. How common is this phenomenon in psychological science in general today?
+item_07,7,Item 7,Phenomenon 7,1,common_subfield,How common is this phenomenon in your subfield today?,7. How common is this phenomenon in your subfield today?
+item_07,7,Item 7,Phenomenon 7,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","7. If this occurs, how harmful is this phenomenon for psychological science?  "
+item_08,8,Item 8,Phenomenon 8,1,common_general,How common is this phenomenon in psychological science in general today?,8. How common is this phenomenon in psychological science in general today?
+item_08,8,Item 8,Phenomenon 8,1,common_subfield,How common is this phenomenon in your subfield today?,8. How common is this phenomenon in your subfield today?
+item_08,8,Item 8,Phenomenon 8,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","8. If this occurs, how harmful is this phenomenon for psychological science?  "
+item_09,9,Item 9,Phenomenon 9,1,common_general,How common is this phenomenon in psychological science in general today?,9. How common is this phenomenon in psychological science in general today?
+item_09,9,Item 9,Phenomenon 9,1,common_subfield,How common is this phenomenon in your subfield today?,9. How common is this phenomenon in your subfield today?
+item_09,9,Item 9,Phenomenon 9,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","9. If this occurs, how harmful is this phenomenon for psychological science?  "
+item_10,10,Item 10,Phenomenon 10,1,common_general,How common is this phenomenon in psychological science in general today?,10. How common is this phenomenon in psychological science in general today?
+item_10,10,Item 10,Phenomenon 10,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","10. If this occurs, how harmful is this phenomenon for psychological science?  "
+item_11,11,Item 11,Phenomenon 11,1,common_general,How common is this phenomenon in psychological science in general today?,11. How common is this phenomenon in psychological science in general today?
+item_11,11,Item 11,Phenomenon 11,1,common_subfield,How common is this phenomenon in your subfield today?,11. How common is this phenomenon in your subfield today?
+item_11,11,Item 11,Phenomenon 11,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","11. If this occurs, how harmful is this phenomenon for psychological science?  "
+item_12,12,Item 12,Phenomenon 12,1,common_general,How common is this phenomenon in psychological science in general today?,12. How common is this phenomenon in psychological science in general today?
+item_12,12,Item 12,Phenomenon 12,1,common_subfield,How common is this phenomenon in your subfield today?,12. How common is this phenomenon in your subfield today?
+item_12,12,Item 12,Phenomenon 12,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","12. If this occurs, how harmful is this phenomenon for psychological science?  "
+item_13,13,Item 13,Phenomenon 13,1,common_general,How common is this phenomenon in psychological science in general today?,13. How common is this phenomenon in psychological science in general today?
+item_13,13,Item 13,Phenomenon 13,1,common_subfield,How common is this phenomenon in your subfield today?,13. How common is this phenomenon in your subfield today?
+item_13,13,Item 13,Phenomenon 13,1,harmfulness,"If this occurs, how harmful is this phenomenon for psychological science?","13. If this occurs, how harmful is this phenomenon for psychological science?  "
