@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TheoryState Dashboard Launcher</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; margin: 0; display: grid; place-items: center; min-height: 100vh; background: #f8fafc; color: #0f172a; }
+      .card { max-width: 760px; padding: 24px; background: white; border-radius: 12px; box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08); }
+      .buttons { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+      .button { display: inline-block; padding: 10px 14px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; }
+      .button.alt { background: #334155; }
+      code { background: #e2e8f0; padding: 2px 4px; border-radius: 4px; }
+      .warn { background: #fef3c7; border: 1px solid #f59e0b; padding: 10px; border-radius: 8px; margin-top: 12px; }
+      ul { margin-top: 6px; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>TheoryState Dashboard</h1>
+      <p>This page opens the live Streamlit dashboard in a new tab.</p>
+
+      <div class="buttons">
+        <a id="dashboard-link" class="button" href="#" rel="noreferrer" target="_blank">Open dashboard (custom URL)</a>
+        <a id="share-link" class="button alt" href="#" rel="noreferrer" target="_blank">Open dashboard (share URL fallback)</a>
+      </div>
+
+      <div id="status" class="warn" style="display:none"></div>
+
+      <p style="margin-top:16px">
+        If both links open <code>share.streamlit.io/errors/not_found</code>, verify app visibility is public in Streamlit settings.
+      </p>
+      <ul>
+        <li>Custom URL: <code id="custom-url-text"></code></li>
+        <li>Share URL fallback: <code id="share-url-text"></code></li>
+      </ul>
+      <p>
+        Update these URLs below if your app settings change.
+      </p>
+    </main>
+
+    <script>
+      const DASHBOARD_URL = "https://theorystate.streamlit.app/";
+      const SHARE_URL_FALLBACK = "https://share.streamlit.io/nnnvd/theorystate/main/app.py";
+
+      const customLink = document.getElementById("dashboard-link");
+      const shareLink = document.getElementById("share-link");
+      const status = document.getElementById("status");
+      document.getElementById("custom-url-text").textContent = DASHBOARD_URL;
+      document.getElementById("share-url-text").textContent = SHARE_URL_FALLBACK;
+
+      const missing = DASHBOARD_URL.trim() === "" || SHARE_URL_FALLBACK.trim() === "";
+      if (missing) {
+        status.style.display = "block";
+        status.textContent = "Dashboard URLs are not configured. Set DASHBOARD_URL and SHARE_URL_FALLBACK in docs/index.html.";
+      } else {
+        customLink.href = DASHBOARD_URL;
+        shareLink.href = SHARE_URL_FALLBACK;
+      }
+    </script>
+  </body>
+</html>
