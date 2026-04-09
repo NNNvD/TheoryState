@@ -44,10 +44,12 @@ def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text)).strip().lower()
 
 
-def score_to_percent(series: pd.Series) -> pd.Series:
-    """Convert 1-7 Likert scores to a 0-100 scale."""
-    values = pd.to_numeric(series, errors="coerce")
-    return ((values - 1) / 6) * 100
+def ci95_from_std(std: pd.Series, n: pd.Series) -> pd.Series:
+    """Return 95% confidence-interval half-widths from sample std and N."""
+    n = pd.to_numeric(n, errors="coerce")
+    std = pd.to_numeric(std, errors="coerce")
+    sem = std / np.sqrt(n)
+    return 1.96 * sem
 
 
 @st.cache_data
@@ -107,17 +109,17 @@ def apply_global_filters(df: pd.DataFrame, filter_cols: dict[str, str], selected
 
 
 def summarize_by_dimension(filtered_long: pd.DataFrame, table: int, ordered_dimensions: list[str]) -> pd.DataFrame:
-    """Aggregate mean percentages by dimension across all items in a table."""
+    """Aggregate mean scores and 95% CI by dimension across all items in a table."""
     subset = filtered_long[(filtered_long["table"] == table) & (filtered_long["dimension"].isin(ordered_dimensions))].copy()
     if subset.empty:
-        return pd.DataFrame(columns=["dimension", "dimension_label", "mean_pct", "N"])
+        return pd.DataFrame(columns=["dimension", "dimension_label", "mean_score", "ci95", "N"])
 
     subset["response"] = pd.to_numeric(subset["response"], errors="coerce")
     summary = (
         subset.groupby("dimension", as_index=False)
-        .agg(mean_score=("response", "mean"), N=("response", "count"))
+        .agg(mean_score=("response", "mean"), std=("response", "std"), N=("response", "count"))
     )
-    summary["mean_pct"] = score_to_percent(summary["mean_score"]) 
+    summary["ci95"] = ci95_from_std(summary["std"], summary["N"]).fillna(0)
     summary["dimension_label"] = summary["dimension"].map(DIMENSION_LABELS)
     summary["dimension"] = pd.Categorical(summary["dimension"], categories=ordered_dimensions, ordered=True)
     return summary.sort_values("dimension")
@@ -129,26 +131,26 @@ def summarize_by_item_and_dimension(
     ordered_dimensions: list[str],
     item_labels: dict[str, str],
 ) -> pd.DataFrame:
-    """Aggregate mean percentages by item and dimension for table pages."""
+    """Aggregate mean scores and 95% CI by item and dimension for table pages."""
     subset = filtered_long[(filtered_long["table"] == table) & (filtered_long["dimension"].isin(ordered_dimensions))].copy()
     if subset.empty:
-        return pd.DataFrame(columns=["item_id", "item_name", "dimension", "dimension_label", "mean_pct", "N"])
+        return pd.DataFrame(columns=["item_id", "item_name", "dimension", "dimension_label", "mean_score", "ci95", "N"])
 
     subset["response"] = pd.to_numeric(subset["response"], errors="coerce")
     summary = (
         subset.groupby(["item_id", "dimension"], as_index=False)
-        .agg(mean_score=("response", "mean"), N=("response", "count"))
+        .agg(mean_score=("response", "mean"), std=("response", "std"), N=("response", "count"))
     )
-    summary["mean_pct"] = score_to_percent(summary["mean_score"])
+    summary["ci95"] = ci95_from_std(summary["std"], summary["N"]).fillna(0)
     summary["dimension_label"] = summary["dimension"].map(DIMENSION_LABELS)
     summary["item_name"] = summary["item_id"].map(item_labels).fillna(summary["item_id"])
 
     sort_basis = (
-        summary[summary["dimension"] == "harmfulness"][ ["item_id", "mean_pct"] ]
+        summary[summary["dimension"] == "harmfulness"][["item_id", "mean_score"]]
         if table == 1
-        else summary[summary["dimension"] == "causal_magnitude"][ ["item_id", "mean_pct"] ]
+        else summary[summary["dimension"] == "causal_magnitude"][["item_id", "mean_score"]]
     )
-    sort_basis = sort_basis.rename(columns={"mean_pct": "sort_metric"})
+    sort_basis = sort_basis.rename(columns={"mean_score": "sort_metric"})
     summary = summary.merge(sort_basis, on="item_id", how="left")
     summary = summary.sort_values(["sort_metric", "item_name"], ascending=[False, True])
 
@@ -192,14 +194,19 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         fig_t1 = px.bar(
             table1_summary,
             x="dimension_label",
-            y="mean_pct",
+            y="mean_score",
             color="dimension_label",
             color_discrete_map=COLOR_MAP,
-            text=table1_summary["mean_pct"].round(1).map(lambda v: f"{v:.1f}%"),
-            labels={"dimension_label": "Question type", "mean_pct": "Mean response (0–100%)"},
+            text=table1_summary["mean_score"].round(2).map(lambda v: f"{v:.2f}"),
+            labels={"dimension_label": "Question type", "mean_score": "Mean response (1–7)"},
         )
-        fig_t1.update_traces(textposition="outside", hovertemplate="%{x}<br>%{y:.1f}%<br>N=%{customdata[0]}<extra></extra>", customdata=table1_summary[["N"]].to_numpy())
-        fig_t1.update_layout(showlegend=False, yaxis_range=[0, 105], margin=dict(t=20, b=40))
+        fig_t1.update_traces(
+            textposition="outside",
+            error_y=dict(type="data", array=table1_summary["ci95"].to_numpy(), visible=True),
+            hovertemplate="%{x}<br>Mean=%{y:.2f}<br>95% CI ±%{customdata[1]:.2f}<br>N=%{customdata[0]}<extra></extra>",
+            customdata=table1_summary[["N", "ci95"]].to_numpy(),
+        )
+        fig_t1.update_layout(showlegend=False, yaxis_range=[1, 7], margin=dict(t=20, b=40))
         st.plotly_chart(fig_t1, use_container_width=True)
 
     with c2:
@@ -207,14 +214,19 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         fig_t2 = px.bar(
             table2_summary,
             x="dimension_label",
-            y="mean_pct",
+            y="mean_score",
             color="dimension_label",
             color_discrete_map=COLOR_MAP,
-            text=table2_summary["mean_pct"].round(1).map(lambda v: f"{v:.1f}%"),
-            labels={"dimension_label": "Question type", "mean_pct": "Mean response (0–100%)"},
+            text=table2_summary["mean_score"].round(2).map(lambda v: f"{v:.2f}"),
+            labels={"dimension_label": "Question type", "mean_score": "Mean response (1–7)"},
         )
-        fig_t2.update_traces(textposition="outside", hovertemplate="%{x}<br>%{y:.1f}%<br>N=%{customdata[0]}<extra></extra>", customdata=table2_summary[["N"]].to_numpy())
-        fig_t2.update_layout(showlegend=False, yaxis_range=[0, 105], margin=dict(t=20, b=40))
+        fig_t2.update_traces(
+            textposition="outside",
+            error_y=dict(type="data", array=table2_summary["ci95"].to_numpy(), visible=True),
+            hovertemplate="%{x}<br>Mean=%{y:.2f}<br>95% CI ±%{customdata[1]:.2f}<br>N=%{customdata[0]}<extra></extra>",
+            customdata=table2_summary[["N", "ci95"]].to_numpy(),
+        )
+        fig_t2.update_layout(showlegend=False, yaxis_range=[1, 7], margin=dict(t=20, b=40))
         st.plotly_chart(fig_t2, use_container_width=True)
 
     st.subheader("Respondent-level relationship between Table 1 and Table 2 aggregates")
@@ -232,24 +244,21 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         st.info("Not enough data for the respondent-level scatter plot under current filters.")
         return
 
-    respondent_scores["x_pct"] = score_to_percent(respondent_scores["common_general"])
-    respondent_scores["y_pct"] = score_to_percent(respondent_scores["causal_agreement"])
-
     scatter_fig = px.scatter(
         respondent_scores,
-        x="x_pct",
-        y="y_pct",
+        x="common_general",
+        y="causal_agreement",
         opacity=0.7,
         labels={
-            "x_pct": "Respondent average: Table 1 commonness in psychology in general (0–100%)",
-            "y_pct": "Respondent average: Table 2 agreement that theory contributes (0–100%)",
+            "common_general": "Respondent average: Table 1 commonness in psychology in general (1–7)",
+            "causal_agreement": "Respondent average: Table 2 agreement that theory contributes (1–7)",
         },
-        hover_data={"respondent_id": True, "x_pct": ":.1f", "y_pct": ":.1f"},
+        hover_data={"respondent_id": True, "common_general": ":.2f", "causal_agreement": ":.2f"},
     )
 
     if len(respondent_scores) >= 2:
-        slope, intercept = np.polyfit(respondent_scores["x_pct"], respondent_scores["y_pct"], deg=1)
-        x_line = np.linspace(respondent_scores["x_pct"].min(), respondent_scores["x_pct"].max(), 100)
+        slope, intercept = np.polyfit(respondent_scores["common_general"], respondent_scores["causal_agreement"], deg=1)
+        x_line = np.linspace(respondent_scores["common_general"].min(), respondent_scores["common_general"].max(), 100)
         y_line = slope * x_line + intercept
         scatter_fig.add_trace(
             go.Scatter(
@@ -262,7 +271,12 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
             )
         )
 
-    scatter_fig.update_layout(height=430, legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0))
+    scatter_fig.update_layout(
+        height=430,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        xaxis_range=[1, 7],
+        yaxis_range=[1, 7],
+    )
     st.plotly_chart(scatter_fig, use_container_width=True)
 
 
@@ -290,18 +304,21 @@ def render_table_page(
     fig = px.bar(
         summary,
         y="item_name",
-        x="mean_pct",
+        x="mean_score",
         color="dimension_label",
         barmode="group",
         orientation="h",
         color_discrete_map=COLOR_MAP,
-        text=summary["mean_pct"].round(1).map(lambda v: f"{v:.1f}%"),
-        labels={"item_name": "Item", "mean_pct": "Mean response (0–100%)", "dimension_label": "Question type"},
-        hover_data={"item_name": True, "dimension_label": True, "N": True, "mean_pct": ":.1f"},
+        text=summary["mean_score"].round(2).map(lambda v: f"{v:.2f}"),
+        labels={"item_name": "Item", "mean_score": "Mean response (1–7)", "dimension_label": "Question type"},
+        hover_data={"item_name": True, "dimension_label": True, "N": True, "mean_score": ":.2f", "ci95": ":.2f"},
     )
-    fig.update_traces(textposition="outside")
+    fig.update_traces(
+        textposition="outside",
+        error_x=dict(type="data", array=summary["ci95"].to_numpy(), visible=True),
+    )
     fig.update_layout(
-        xaxis_range=[0, 105],
+        xaxis_range=[1, 7],
         yaxis={"categoryorder": "array", "categoryarray": list(summary["item_name"].cat.categories[::-1])},
         height=620 if table == 1 else 480,
         margin=dict(l=20, r=20, t=20, b=20),
@@ -312,7 +329,7 @@ def render_table_page(
 
 def main() -> None:
     st.title("TheoryState Survey Dashboard")
-    st.caption("All charts show mean 1–7 responses transformed to 0–100% using ((mean - 1) / 6) * 100.")
+    st.caption("All charts show mean scores on the original 1–7 response scale with 95% confidence intervals.")
 
     required_files = [DASHBOARD_FILE, LONG_FILE, ITEM_DICTIONARY_FILE]
     missing = [str(path) for path in required_files if not path.exists()]
