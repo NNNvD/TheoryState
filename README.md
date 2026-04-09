@@ -77,7 +77,7 @@ GitHub Pages cannot run Streamlit server code directly. Instead:
 3. Enable Pages in GitHub repo settings (source: GitHub Actions).
 4. Push to `main` (or `work`) to trigger `.github/workflows/pages.yml`.
 
-The Pages site now performs a direct redirect to the Streamlit app (with a manual link fallback) to avoid iframe/redirect issues.
+The root Pages URL now opens `docs/index.html` (dashboard launcher). The launcher opens the Streamlit app URL in a new tab to avoid iframe/redirect issues.
 
 ## Deployment
 ### Streamlit Community Cloud
@@ -87,7 +87,15 @@ Deploy with:
 - entrypoint: `app.py`
 
 ### GitHub Pages
-After enabling Pages, the `pages.yml` workflow publishes `docs/` so the repo website redirects visitors to the live Streamlit dashboard.
+After enabling Pages, the `pages.yml` workflow publishes `docs/` so the repo website redirects visitors to the dashboard launcher page.
+
+
+### Streamlit access errors (`share.streamlit.io/errors/not_found`)
+If you see “You do not have access to this app or it does not exist”, verify all of the following:
+- The app is deployed on Streamlit Community Cloud and has a valid URL like `https://<app-name>.streamlit.app/`.
+- The app visibility is public (or your signed-in account has explicit access).
+- `DASHBOARD_URL` in `docs/index.html` matches the deployed app URL exactly.
+- If ownership changed, reconnect the correct GitHub account in Streamlit Cloud settings.
 
 ### If Pages still shows README instead of dashboard
 - In repo **Settings → Pages**, either:
