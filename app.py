@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
+import textwrap
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 st.set_page_config(page_title="TheoryState Dashboard", layout="wide")
@@ -12,173 +16,407 @@ DERIVED_DIR = Path("data/derived")
 DASHBOARD_FILE = DERIVED_DIR / "responses_dashboard_ready.csv"
 LONG_FILE = DERIVED_DIR / "responses_long.csv"
 ITEM_DICTIONARY_FILE = DERIVED_DIR / "item_dictionary.csv"
-SUMMARY_FILE = DERIVED_DIR / "cleaning_summary.csv"
 
-BACKGROUND_ORDER_HINTS = [
-    "Timestamp",
-    "Do you currently work as a psychological scientist",
-    "What is your highest completed university-level education",
-    "Which option best describes the subfield",
-]
+FILTERS = {
+    "work_status": {
+        "source_prompt": "Do you currently work as a psychological scientist (i.e., conduct psychological research or teach psychology/psychological science at a university or research institute)?",
+        "label": "Work in psychological science",
+    },
+    "education": {
+        "source_prompt": "What is your highest completed university-level education in psychology/psychological science?",
+        "label": "Education in psychology",
+    },
+    "subfield": {
+        "source_prompt": "Which option best describes the subfield you currently work in most of the time?",
+        "label": "Subfield",
+    },
+}
+
+DIMENSION_META = {
+    "common_subfield": {
+        "short": "Subfield commonness",
+        "full": "How common is this phenomenon in your subfield today?",
+    },
+    "common_general": {
+        "short": "General commonness",
+        "full": "How common is this phenomenon in psychological science in general today?",
+    },
+    "harmfulness": {
+        "short": "Harm if present",
+        "full": "If this occurs, how harmful is this phenomenon for psychological science?",
+    },
+    "causal_agreement": {
+        "short": "Theory contributes",
+        "full": "To what extent do you agree that insufficient theory development contributes to this phenomenon?",
+    },
+    "causal_magnitude": {
+        "short": "Causal importance",
+        "full": "How significant is the causal contribution to this phenomenon?",
+    },
+}
+
+TABLE1_ITEM_NAMES = {
+    1: "Current quality of theories",
+    2: "Status of theory development",
+    3: "Derivation of testable hypotheses",
+    4: "How results inform theory",
+    5: "Lack of disambiguation",
+    6: "Role of math, logic, and simulations",
+    7: "Division of labor",
+    8: "Overemphasis on methods",
+    9: "Measurement vs. substantive theory",
+    10: "Fragmentation across subfields",
+    11: "Lack of cumulative record-keeping",
+    12: "Incentives favor discovery over understanding",
+    13: "Educational neglect",
+}
+
+TABLE2_ITEM_NAMES = {
+    1: "Low replication rates",
+    2: "Lack of cumulative progress",
+    3: "Uninterpretable results",
+    4: "Overproduction of isolated effects",
+    5: "Weak guidance for application & credibility",
+}
+
+COLOR_MAP = {
+    "Subfield commonness": "#1f77b4",
+    "General commonness": "#ff7f0e",
+    "Harm if present": "#2ca02c",
+    "Theory contributes": "#9467bd",
+    "Causal importance": "#d62728",
+}
 
 
-def infer_background_columns(df: pd.DataFrame) -> list[str]:
-    """Return likely structured background columns used for filtering."""
-    lowered = {c: c.lower() for c in df.columns}
-    background = []
-    for col in df.columns:
-        if any(h.lower() in lowered[col] for h in BACKGROUND_ORDER_HINTS):
-            background.append(col)
-    return background
+def normalize_text(text: str) -> str:
+    return re.sub(r"\s+", " ", str(text)).strip().lower()
+
+
+def mean_to_score_100(series: pd.Series) -> pd.Series:
+    values = pd.to_numeric(series, errors="coerce")
+    return ((values - 1) / 6) * 100
 
 
 @st.cache_data
-def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None, pd.DataFrame]:
-    """Load dashboard datasets from derived outputs."""
-    dashboard = pd.read_csv(DASHBOARD_FILE)
-    long_df = pd.read_csv(LONG_FILE)
-    item_dictionary = pd.read_csv(ITEM_DICTIONARY_FILE)
-    summary = pd.read_csv(SUMMARY_FILE) if SUMMARY_FILE.exists() else None
-    return dashboard, long_df, summary, item_dictionary
+def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    return pd.read_csv(DASHBOARD_FILE), pd.read_csv(LONG_FILE), pd.read_csv(ITEM_DICTIONARY_FILE)
 
 
-def describe_stats(values: pd.Series) -> dict[str, float]:
-    """Compute summary metrics for one response series."""
-    values = pd.to_numeric(values, errors="coerce").dropna()
-    return {
-        "mean": values.mean(),
-        "median": values.median(),
-        "std": values.std(ddof=1),
-        "N": int(values.notna().sum()),
-    }
+def find_filter_columns(df: pd.DataFrame) -> dict[str, str]:
+    normalized = {normalize_text(c): c for c in df.columns}
+    matched: dict[str, str] = {}
+    for key, cfg in FILTERS.items():
+        target = normalize_text(cfg["source_prompt"])
+        if target in normalized:
+            matched[key] = normalized[target]
+            continue
+        for ncol, col in normalized.items():
+            if target in ncol or ncol in target:
+                matched[key] = col
+                break
+    return matched
 
 
-def apply_filters(df: pd.DataFrame, filters: dict[str, list[str]]) -> pd.DataFrame:
-    """Apply sidebar filters if provided."""
-    filtered = df.copy()
-    for col, selected in filters.items():
-        if selected:
-            filtered = filtered[filtered[col].astype(str).isin(selected)]
-    return filtered
+def build_item_name_map(item_dict: pd.DataFrame) -> dict[str, str]:
+    name_map: dict[str, str] = {}
+    unique_items = item_dict[["item_id", "item_number", "table"]].drop_duplicates("item_id")
+    for _, row in unique_items.iterrows():
+        item_id = row["item_id"]
+        number = int(row["item_number"])
+        table = int(row["table"])
+        if table == 1:
+            name_map[item_id] = TABLE1_ITEM_NAMES.get(number, f"Table 1 item {number}")
+        else:
+            name_map[item_id] = TABLE2_ITEM_NAMES.get(number, f"Table 2 item {number}")
+    return name_map
 
 
-st.title("TheoryState Survey Dashboard")
-st.caption("Interactive public summary of perspectives on theory development in psychological science.")
+def apply_filters(df: pd.DataFrame, filter_cols: dict[str, str], selections: dict[str, list[str]]) -> pd.DataFrame:
+    out = df.copy()
+    for key, values in selections.items():
+        col = filter_cols.get(key)
+        if col and col in out.columns:
+            out = out[out[col].astype(str).isin(values)]
+    return out
 
-required = [DASHBOARD_FILE, LONG_FILE, ITEM_DICTIONARY_FILE]
-missing = [str(p) for p in required if not p.exists()]
-if missing:
-    st.error("Missing cleaned data files:\n- " + "\n- ".join(missing))
-    st.info("Run `python scripts/clean_data.py` first.")
-    st.stop()
 
-dashboard_df, long_df, summary_df, item_dictionary = load_data()
-background_cols = [c for c in infer_background_columns(dashboard_df) if c in dashboard_df.columns]
+def render_sidebar_filters(dashboard_df: pd.DataFrame, filter_cols: dict[str, str]) -> dict[str, list[str]]:
+    st.sidebar.header("Filters")
 
-st.sidebar.header("Filters")
-filters: dict[str, list[str]] = {}
-for col in background_cols:
-    options = sorted(dashboard_df[col].dropna().astype(str).unique().tolist())
-    if options:
-        filters[col] = st.sidebar.multiselect(col, options)
+    options_by_key: dict[str, list[str]] = {}
+    for key in FILTERS:
+        col = filter_cols.get(key)
+        if col and col in dashboard_df.columns:
+            options_by_key[key] = sorted(dashboard_df[col].dropna().astype(str).unique().tolist())
+        else:
+            options_by_key[key] = []
 
-filtered_dashboard = apply_filters(dashboard_df, filters)
-filtered_long = apply_filters(long_df, {k: v for k, v in filters.items() if k in long_df.columns})
+    if st.sidebar.button("Reset filters", use_container_width=True):
+        for key, options in options_by_key.items():
+            st.session_state[f"filter_{key}"] = options
 
-page = st.sidebar.radio("Section", ["Overview", "Table 1", "Table 2", "Methods / Data Quality"])
+    selections: dict[str, list[str]] = {}
+    for key, cfg in FILTERS.items():
+        selections[key] = st.sidebar.multiselect(
+            cfg["label"],
+            options=options_by_key[key],
+            default=options_by_key[key],
+            key=f"filter_{key}",
+        )
+    return selections
 
-if page == "Overview":
-    st.header("Overview")
-    raw_rows = None
-    rows_after_qc = None
-    if summary_df is not None and not summary_df.empty:
-        summary_map = dict(zip(summary_df["metric"], summary_df["value"]))
-        raw_rows = summary_map.get("raw_rows")
-        rows_after_qc = summary_map.get("rows_after_qc")
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total raw rows", raw_rows if raw_rows is not None else "N/A")
-    c2.metric("Rows after QC filtering", rows_after_qc if rows_after_qc is not None else len(dashboard_df))
-    c3.metric("Included in current view", len(filtered_dashboard))
+def summarize_by_dimension(filtered_long: pd.DataFrame, table: int, dimensions: list[str]) -> pd.DataFrame:
+    subset = filtered_long[(filtered_long["table"] == table) & (filtered_long["dimension"].isin(dimensions))].copy()
+    if subset.empty:
+        return pd.DataFrame(columns=["dimension", "label", "score", "N"])
+    subset["response"] = pd.to_numeric(subset["response"], errors="coerce")
+    out = subset.groupby("dimension", as_index=False).agg(mean_response=("response", "mean"), N=("response", "count"))
+    out["score"] = mean_to_score_100(out["mean_response"])
+    out["label"] = out["dimension"].map(lambda d: DIMENSION_META[d]["short"])
+    out["full_label"] = out["dimension"].map(lambda d: DIMENSION_META[d]["full"])
+    out["dimension"] = pd.Categorical(out["dimension"], categories=dimensions, ordered=True)
+    return out.sort_values("dimension")
 
-    st.markdown(
-        "**Inclusion criteria:** keep responses where both QC checks are passed "
-        "(check number 4 = 4 and check number 2 = 2)."
+
+def summarize_items(
+    filtered_long: pd.DataFrame,
+    table: int,
+    dimensions: list[str],
+    item_names: dict[str, str],
+    sort_dimension: str,
+) -> pd.DataFrame:
+    subset = filtered_long[(filtered_long["table"] == table) & (filtered_long["dimension"].isin(dimensions))].copy()
+    if subset.empty:
+        return pd.DataFrame(columns=["item_name", "dimension", "label", "score", "N"])
+
+    subset["response"] = pd.to_numeric(subset["response"], errors="coerce")
+    out = subset.groupby(["item_id", "dimension"], as_index=False).agg(mean_response=("response", "mean"), N=("response", "count"))
+    out["score"] = mean_to_score_100(out["mean_response"])
+    out["label"] = out["dimension"].map(lambda d: DIMENSION_META[d]["short"])
+    out["full_label"] = out["dimension"].map(lambda d: DIMENSION_META[d]["full"])
+    out["item_name"] = out["item_id"].map(item_names).fillna(out["item_id"])
+
+    sorter = out[out["dimension"] == sort_dimension][["item_id", "score"]].rename(columns={"score": "sort_score"})
+    out = out.merge(sorter, on="item_id", how="left").sort_values(["sort_score", "item_name"], ascending=[False, True])
+    order = out.drop_duplicates("item_id")["item_name"].tolist()
+    out["item_name"] = pd.Categorical(out["item_name"], categories=order, ordered=True)
+    return out.sort_values(["item_name", "dimension"])
+
+
+def kpi_value(filtered_long: pd.DataFrame, dimension: str) -> float:
+    vals = pd.to_numeric(filtered_long[filtered_long["dimension"] == dimension]["response"], errors="coerce")
+    return float(mean_to_score_100(pd.Series([vals.mean()])).iloc[0]) if vals.notna().any() else float("nan")
+
+
+def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
+    st.subheader("Aggregate results across all items")
+    if filtered_n == 0:
+        st.warning("No responses match the current filters.")
+        return
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Filtered N", filtered_n)
+    c2.metric("Mean Table 1 harmfulness", f"{kpi_value(filtered_long, 'harmfulness'):.1f}")
+    c3.metric("Mean Table 1 general commonness", f"{kpi_value(filtered_long, 'common_general'):.1f}")
+    c4.metric("Mean Table 2 causal contribution", f"{kpi_value(filtered_long, 'causal_agreement'):.1f}")
+
+    t1 = summarize_by_dimension(filtered_long, 1, ["common_subfield", "common_general", "harmfulness"])
+    t2 = summarize_by_dimension(filtered_long, 2, ["causal_agreement", "causal_magnitude"])
+
+    st.markdown("#### Table 1 aggregate scores")
+    fig1 = px.bar(
+        t1,
+        x="label",
+        y="score",
+        color="label",
+        color_discrete_map=COLOR_MAP,
+        text=t1["score"].round(1).map(lambda x: f"{x:.1f}"),
+        labels={"label": "", "score": "Score (0–100)"},
+        template="plotly_white",
     )
-
-    st.subheader("Background variable breakdowns")
-    for col in background_cols:
-        counts = filtered_dashboard[col].astype(str).value_counts(dropna=False).reset_index()
-        counts.columns = [col, "count"]
-        fig = px.bar(counts, x=col, y="count", title=col)
-        fig.update_layout(height=320)
-        st.plotly_chart(fig, use_container_width=True)
-
-elif page in {"Table 1", "Table 2"}:
-    table_num = 1 if page == "Table 1" else 2
-    st.header(page)
-
-    table_items = (
-        item_dictionary[item_dictionary["table"] == table_num][["item_id", "item_label"]]
-        .drop_duplicates()
-        .sort_values("item_id")
+    fig1.update_traces(
+        textposition="outside",
+        hovertemplate="%{customdata[0]}<br>Score=%{y:.1f}<br>N=%{customdata[1]}<extra></extra>",
+        customdata=t1[["full_label", "N"]].to_numpy(),
     )
-    if table_items.empty:
-        st.warning(f"No items available for {page}.")
-        st.stop()
+    fig1.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""), yaxis_range=[0, 100], height=430)
+    st.plotly_chart(fig1, use_container_width=True)
 
-    selected_item = st.selectbox("Select item", table_items["item_id"].tolist(), format_func=lambda x: f"{x} — {table_items.set_index('item_id').loc[x, 'item_label']}")
-    item_df = filtered_long[(filtered_long["table"] == table_num) & (filtered_long["item_id"] == selected_item)].copy()
+    st.markdown("#### Table 2 aggregate scores")
+    fig2 = px.bar(
+        t2,
+        x="label",
+        y="score",
+        color="label",
+        color_discrete_map=COLOR_MAP,
+        text=t2["score"].round(1).map(lambda x: f"{x:.1f}"),
+        labels={"label": "", "score": "Score (0–100)"},
+        template="plotly_white",
+    )
+    fig2.update_traces(
+        textposition="outside",
+        hovertemplate="%{customdata[0]}<br>Score=%{y:.1f}<br>N=%{customdata[1]}<extra></extra>",
+        customdata=t2[["full_label", "N"]].to_numpy(),
+    )
+    fig2.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""), yaxis_range=[0, 100], height=430)
+    st.plotly_chart(fig2, use_container_width=True)
 
-    if item_df.empty:
-        st.warning("No rows available after filtering for this item.")
-        st.stop()
+    st.markdown("#### Relation between Table 1 and Table 2 aggregate scores")
+    pair = filtered_long[filtered_long["dimension"].isin(["common_general", "causal_agreement"])].copy()
+    pair["response"] = pd.to_numeric(pair["response"], errors="coerce")
+    agg = (
+        pair.groupby(["respondent_id", "dimension"], as_index=False)
+        .agg(mean_response=("response", "mean"))
+        .pivot(index="respondent_id", columns="dimension", values="mean_response")
+        .dropna()
+        .reset_index()
+    )
+    if agg.empty:
+        st.info("Not enough respondent-level data for this plot under current filters.")
+        return
+    agg["x"] = mean_to_score_100(agg["common_general"])
+    agg["y"] = mean_to_score_100(agg["causal_agreement"])
 
-    summary_rows = []
-    for dimension, dim_df in item_df.groupby("dimension_label"):
-        stats = describe_stats(dim_df["response"])
-        summary_rows.append({"dimension": dimension, **stats})
-    summary_table = pd.DataFrame(summary_rows).sort_values("dimension")
+    scatter = px.scatter(
+        agg,
+        x="x",
+        y="y",
+        labels={"x": "Table 1 general commonness", "y": "Table 2 theory contribution"},
+        opacity=0.75,
+        template="plotly_white",
+        hover_data={"respondent_id": True, "x": ":.1f", "y": ":.1f"},
+    )
+    if len(agg) >= 2:
+        slope, intercept = np.polyfit(agg["x"], agg["y"], 1)
+        line_x = np.linspace(agg["x"].min(), agg["x"].max(), 80)
+        scatter.add_trace(go.Scatter(x=line_x, y=slope * line_x + intercept, mode="lines", name="Trend", line=dict(color="#555")))
+    scatter.update_layout(height=420, legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""), xaxis_range=[0, 100], yaxis_range=[0, 100])
+    st.plotly_chart(scatter, use_container_width=True)
 
-    st.subheader("Summary statistics")
-    st.dataframe(summary_table, use_container_width=True)
 
-    st.subheader("Response distribution")
-    dim_options = sorted(item_df["dimension_label"].dropna().unique().tolist())
-    selected_dimension = st.selectbox("Dimension", dim_options)
-    plot_df = item_df[item_df["dimension_label"] == selected_dimension].copy()
-    plot_df["response"] = pd.to_numeric(plot_df["response"], errors="coerce")
-    plot_df = plot_df.dropna(subset=["response"])
-    dist = plot_df["response"].value_counts().sort_index().rename_axis("response").reset_index(name="count")
-    fig = px.bar(dist, x="response", y="count", title=f"{selected_item}: {selected_dimension}")
+def wrap_item_labels(series: pd.Series, width: int = 38) -> pd.Series:
+    return series.astype(str).map(lambda s: "<br>".join(textwrap.wrap(s, width=width)))
+
+
+def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
+    st.subheader("Commonness and harm of candidate features of the current research landscape")
+    if filtered_n == 0:
+        st.warning("No responses match the current filters.")
+        return
+
+    summary = summarize_items(
+        filtered_long,
+        table=1,
+        dimensions=["common_subfield", "common_general", "harmfulness"],
+        item_names=item_names,
+        sort_dimension="harmfulness",
+    )
+    if summary.empty:
+        st.info("No Table 1 responses available under current filters.")
+        return
+
+    summary["item_wrapped"] = wrap_item_labels(summary["item_name"])
+    fig = px.bar(
+        summary,
+        y="item_wrapped",
+        x="score",
+        color="label",
+        orientation="h",
+        barmode="group",
+        color_discrete_map=COLOR_MAP,
+        text=summary["score"].round(1).map(lambda x: f"{x:.1f}"),
+        labels={"item_wrapped": "Item", "score": "Score (0–100)", "label": ""},
+        template="plotly_white",
+        hover_data={"item_name": True, "full_label": True, "score": ":.1f", "N": True},
+    )
+    fig.update_traces(textposition="outside")
+    fig.update_layout(
+        height=760,
+        xaxis_range=[0, 100],
+        yaxis={"categoryorder": "array", "categoryarray": list(summary["item_wrapped"].drop_duplicates()[::-1])},
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""),
+        margin=dict(l=20, r=20, t=20, b=20),
+    )
     st.plotly_chart(fig, use_container_width=True)
 
-else:
-    st.header("Methods / Data Quality")
-    st.markdown(
-        """
-### QC filters
-- Keep rows where `6. For quality control, please check number 4.` equals `4`.
-- Keep rows where `3. For quality control, please check number 2` equals `2`.
 
-### Row exclusion and column handling
-- Rows that fail either QC check are excluded.
-- Free-text comment fields (e.g., `Optional comment`, `Final comments`) are removed from public outputs.
-- Structured background variables (timestamp, work status, education, subfield) are retained when present.
+def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
+    st.subheader("Perceived contribution of limited theory development to downstream consequences")
+    if filtered_n == 0:
+        st.warning("No responses match the current filters.")
+        return
 
-### Output files
-- `responses_dashboard_ready.csv`
-- `responses_numeric_only.csv`
-- `responses_long.csv`
-- `item_dictionary.csv`
-- `cleaning_summary.csv`
-
-### Current limitations and assumptions
-- Item labels are inferred from question numbering in source columns.
-- If raw exports are missing, the cleaning script can rebuild derivative artifacts from an existing dashboard-ready file.
-        """
+    summary = summarize_items(
+        filtered_long,
+        table=2,
+        dimensions=["causal_agreement", "causal_magnitude"],
+        item_names=item_names,
+        sort_dimension="causal_magnitude",
     )
+    if summary.empty:
+        st.info("No Table 2 responses available under current filters.")
+        return
 
-    if summary_df is not None:
-        st.subheader("Cleaning summary")
-        st.dataframe(summary_df, use_container_width=True)
+    summary["item_wrapped"] = wrap_item_labels(summary["item_name"], width=42)
+    fig = px.bar(
+        summary,
+        y="item_wrapped",
+        x="score",
+        color="label",
+        orientation="h",
+        barmode="group",
+        color_discrete_map=COLOR_MAP,
+        text=summary["score"].round(1).map(lambda x: f"{x:.1f}"),
+        labels={"item_wrapped": "Item", "score": "Score (0–100)", "label": ""},
+        template="plotly_white",
+        hover_data={"item_name": True, "full_label": True, "score": ":.1f", "N": True},
+    )
+    fig.update_traces(textposition="outside")
+    fig.update_layout(
+        height=530,
+        xaxis_range=[0, 100],
+        yaxis={"categoryorder": "array", "categoryarray": list(summary["item_wrapped"].drop_duplicates()[::-1])},
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""),
+        margin=dict(l=20, r=20, t=20, b=20),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def main() -> None:
+    st.title("TheoryState Dashboard")
+    st.markdown(
+        "This dashboard summarizes responses to the TheoryState survey on theory development in psychological science. "
+        "Scores are shown on a 0–100 scale, where higher values indicate stronger endorsement, greater perceived commonness, "
+        "greater harm, or stronger perceived causal contribution. Use the filters on the left to explore how responses differ "
+        "across work roles, education backgrounds, and subfields."
+    )
+    st.caption("Scores are based on 1–7 responses transformed to a 0–100 scale.")
+
+    required = [DASHBOARD_FILE, LONG_FILE, ITEM_DICTIONARY_FILE]
+    missing = [str(p) for p in required if not p.exists()]
+    if missing:
+        st.error("Missing required data files:\n- " + "\n- ".join(missing))
+        st.stop()
+
+    dashboard_df, long_df, item_dict = load_data()
+    filter_cols = find_filter_columns(dashboard_df)
+    item_names = build_item_name_map(item_dict)
+
+    selections = render_sidebar_filters(dashboard_df, filter_cols)
+    filtered_dashboard = apply_filters(dashboard_df, filter_cols, selections)
+    filtered_long = apply_filters(long_df, filter_cols, selections)
+    filtered_n = int(filtered_dashboard.shape[0])
+
+    page = st.sidebar.radio("Page", ["Overview", "Table 1: Current research landscape", "Table 2: Consequences"])
+
+    if page == "Overview":
+        render_overview(filtered_long, filtered_n)
+    elif page == "Table 1: Current research landscape":
+        render_table1(filtered_long, filtered_n, item_names)
+    else:
+        render_table2(filtered_long, filtered_n, item_names)
+
+
+if __name__ == "__main__":
+    main()
