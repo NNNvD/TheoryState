@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
-import textwrap
 
-import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-st.set_page_config(page_title="TheoryState Dashboard", layout="wide")
+st.set_page_config(
+    page_title="The state and status of theory in psychological science",
+    layout="wide",
+)
 
 DERIVED_DIR = Path("data/derived")
 DASHBOARD_FILE = DERIVED_DIR / "responses_dashboard_ready.csv"
@@ -20,15 +21,12 @@ ITEM_DICTIONARY_FILE = DERIVED_DIR / "item_dictionary.csv"
 FILTERS = {
     "work_status": {
         "source_prompt": "Do you currently work as a psychological scientist (i.e., conduct psychological research or teach psychology/psychological science at a university or research institute)?",
-        "label": "Work in psychological science",
     },
     "education": {
         "source_prompt": "What is your highest completed university-level education in psychology/psychological science?",
-        "label": "Education in psychology",
     },
     "subfield": {
         "source_prompt": "Which option best describes the subfield you currently work in most of the time?",
-        "label": "Subfield",
     },
 }
 
@@ -78,6 +76,30 @@ TABLE2_ITEM_NAMES = {
     4: "Overproduction of isolated effects",
     5: "Weak guidance for application & credibility",
 }
+
+TABLE1_STATEMENT_ROWS = [
+    ("Current quality of theories", "Many theories are underspecified, weakly integrated, or insufficiently formalized."),
+    ("Status of theory development", "Theory development is often underprioritized relative to data collection and method-focused work."),
+    ("Derivation of testable hypotheses", "Theories frequently do not generate precise, risky, and discriminative predictions."),
+    ("How results inform theory", "Empirical findings often do not feed back clearly into revising or refining theory."),
+    ("Lack of disambiguation", "Competing explanations are not consistently adjudicated through strong tests."),
+    ("Role of math, logic, and simulations", "Formal tools are underused for clarifying assumptions and implications."),
+    ("Division of labor", "Theory-building and empirical testing are not always coordinated effectively."),
+    ("Overemphasis on methods", "Methodological innovation can outpace substantive theoretical development."),
+    ("Measurement vs. substantive theory", "Measurement and psychometrics can be emphasized without matching progress in substantive theory."),
+    ("Fragmentation across subfields", "Theoretical frameworks are often fragmented across subfields and research traditions."),
+    ("Lack of cumulative record-keeping", "The field lacks strong cumulative structures for tracking theory performance over time."),
+    ("Incentives favor discovery over understanding", "Incentives can reward novel findings more than explanatory integration and understanding."),
+    ("Educational neglect", "Training in formal and cumulative theory development is often limited."),
+]
+
+TABLE2_STATEMENT_ROWS = [
+    ("Low replication rates", "Insufficient theory development may contribute to lower reproducibility and replication success."),
+    ("Lack of cumulative progress", "Weak theory development can slow accumulation of coherent, integrative knowledge."),
+    ("Uninterpretable results", "Findings may be difficult to interpret when theoretical commitments are vague or underspecified."),
+    ("Overproduction of isolated effects", "Limited theory can yield many disconnected effects without broader explanatory structure."),
+    ("Weak guidance for application & credibility", "Applied translation and public credibility can suffer when theory is underdeveloped."),
+]
 
 COLOR_MAP = {
     "Subfield commonness": "#1f77b4",
@@ -135,13 +157,25 @@ def apply_filters(df: pd.DataFrame, filter_cols: dict[str, str], selections: dic
     out = df.copy()
     for key, values in selections.items():
         col = filter_cols.get(key)
-        if col and col in out.columns:
-            out = out[out[col].astype(str).isin(values)]
+        if not col or col not in out.columns or not values:
+            continue
+        out = out[out[col].astype(str).isin(values)]
     return out
 
 
-def render_sidebar_filters(dashboard_df: pd.DataFrame, filter_cols: dict[str, str]) -> dict[str, list[str]]:
-    st.sidebar.header("Filters")
+def render_sidebar_controls(dashboard_df: pd.DataFrame, filter_cols: dict[str, str]) -> tuple[str, dict[str, list[str]]]:
+    st.sidebar.markdown("### Page")
+    page = st.sidebar.radio(
+        "Choose dashboard page",
+        [
+            "Overview",
+            "Table 1. Diagnoses of the state and status of theory in psychological science",
+            "Table 2. Consequences of the state and status of theory in psychological science",
+        ],
+        label_visibility="collapsed",
+    )
+
+    st.sidebar.markdown("### Filters")
 
     options_by_key: dict[str, list[str]] = {}
     for key in FILTERS:
@@ -153,17 +187,20 @@ def render_sidebar_filters(dashboard_df: pd.DataFrame, filter_cols: dict[str, st
 
     if st.sidebar.button("Reset filters", use_container_width=True):
         for key, options in options_by_key.items():
-            st.session_state[f"filter_{key}"] = options
+            for option in options:
+                st.session_state[f"filter_{key}_{option}"] = False
 
     selections: dict[str, list[str]] = {}
     for key, cfg in FILTERS.items():
-        selections[key] = st.sidebar.multiselect(
-            cfg["label"],
-            options=options_by_key[key],
-            default=options_by_key[key],
-            key=f"filter_{key}",
-        )
-    return selections
+        selected_values: list[str] = []
+        with st.sidebar.expander(cfg["source_prompt"], expanded=False):
+            for option in options_by_key[key]:
+                checked = st.checkbox(option, key=f"filter_{key}_{option}")
+                if checked:
+                    selected_values.append(option)
+        selections[key] = selected_values
+
+    return page, selections
 
 
 def summarize_by_dimension(filtered_long: pd.DataFrame, table: int, dimensions: list[str]) -> pd.DataFrame:
@@ -184,7 +221,7 @@ def summarize_items(
     table: int,
     dimensions: list[str],
     item_names: dict[str, str],
-    sort_dimension: str,
+    ordered_item_names: list[str],
 ) -> pd.DataFrame:
     subset = filtered_long[(filtered_long["table"] == table) & (filtered_long["dimension"].isin(dimensions))].copy()
     if subset.empty:
@@ -197,201 +234,164 @@ def summarize_items(
     out["full_label"] = out["dimension"].map(lambda d: DIMENSION_META[d]["full"])
     out["item_name"] = out["item_id"].map(item_names).fillna(out["item_id"])
 
-    sorter = out[out["dimension"] == sort_dimension][["item_id", "score"]].rename(columns={"score": "sort_score"})
-    out = out.merge(sorter, on="item_id", how="left").sort_values(["sort_score", "item_name"], ascending=[False, True])
-    order = out.drop_duplicates("item_id")["item_name"].tolist()
-    out["item_name"] = pd.Categorical(out["item_name"], categories=order, ordered=True)
+    out["item_name"] = pd.Categorical(out["item_name"], categories=ordered_item_names, ordered=True)
+    out["dimension"] = pd.Categorical(out["dimension"], categories=dimensions, ordered=True)
     return out.sort_values(["item_name", "dimension"])
 
 
-def kpi_value(filtered_long: pd.DataFrame, dimension: str) -> float:
-    vals = pd.to_numeric(filtered_long[filtered_long["dimension"] == dimension]["response"], errors="coerce")
-    return float(mean_to_score_100(pd.Series([vals.mean()])).iloc[0]) if vals.notna().any() else float("nan")
+def make_gauge(value: float, label: str, color: str) -> go.Figure:
+    fig = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=value,
+            number={"valueformat": ".1f", "font": {"size": 34}},
+            title={"text": f"<b>{label}</b>", "font": {"size": 18}},
+            gauge={
+                "axis": {"range": [0, 100], "tickwidth": 1},
+                "bar": {"color": color, "thickness": 0.7},
+                "bgcolor": "#f3f4f6",
+                "borderwidth": 1,
+                "bordercolor": "#d1d5db",
+            },
+        )
+    )
+    fig.update_layout(height=280, margin=dict(l=20, r=20, t=60, b=20), template="plotly_white")
+    return fig
+
+
+def render_statement_table(rows: list[tuple[str, str]]) -> None:
+    table_df = pd.DataFrame(rows, columns=["Item", "Description from the statement context"])
+    st.dataframe(table_df, use_container_width=True, hide_index=True)
 
 
 def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
-    st.subheader("Aggregate results across all items")
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
         return
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Filtered N", filtered_n)
-    c2.metric("Mean Table 1 harmfulness", f"{kpi_value(filtered_long, 'harmfulness'):.1f}")
-    c3.metric("Mean Table 1 general commonness", f"{kpi_value(filtered_long, 'common_general'):.1f}")
-    c4.metric("Mean Table 2 causal contribution", f"{kpi_value(filtered_long, 'causal_agreement'):.1f}")
-
+    st.markdown("#### Table 1 aggregate summary")
     t1 = summarize_by_dimension(filtered_long, 1, ["common_subfield", "common_general", "harmfulness"])
+    cols1 = st.columns(3)
+    for col, (_, row), color in zip(cols1, t1.iterrows(), ["#1f77b4", "#ff7f0e", "#2ca02c"]):
+        with col:
+            st.plotly_chart(make_gauge(row["score"], row["label"], color), use_container_width=True)
+
+    st.markdown("#### Table 2 aggregate summary")
     t2 = summarize_by_dimension(filtered_long, 2, ["causal_agreement", "causal_magnitude"])
+    cols2 = st.columns([1, 1, 0.2])
+    for col, (_, row), color in zip(cols2[:2], t2.iterrows(), ["#9467bd", "#d62728"]):
+        with col:
+            st.plotly_chart(make_gauge(row["score"], row["label"], color), use_container_width=True)
 
-    st.markdown("#### Table 1 aggregate scores")
-    fig1 = px.bar(
-        t1,
-        x="label",
-        y="score",
-        color="label",
-        color_discrete_map=COLOR_MAP,
-        text=t1["score"].round(1).map(lambda x: f"{x:.1f}"),
-        labels={"label": "", "score": "Score (0–100)"},
-        template="plotly_white",
-    )
-    fig1.update_traces(
-        textposition="outside",
-        hovertemplate="%{customdata[0]}<br>Score=%{y:.1f}<br>N=%{customdata[1]}<extra></extra>",
-        customdata=t1[["full_label", "N"]].to_numpy(),
-    )
-    fig1.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""), yaxis_range=[0, 100], height=430)
-    st.plotly_chart(fig1, use_container_width=True)
+    st.caption("Aggregate results across all items")
 
-    st.markdown("#### Table 2 aggregate scores")
-    fig2 = px.bar(
-        t2,
-        x="label",
-        y="score",
-        color="label",
-        color_discrete_map=COLOR_MAP,
-        text=t2["score"].round(1).map(lambda x: f"{x:.1f}"),
-        labels={"label": "", "score": "Score (0–100)"},
-        template="plotly_white",
-    )
-    fig2.update_traces(
-        textposition="outside",
-        hovertemplate="%{customdata[0]}<br>Score=%{y:.1f}<br>N=%{customdata[1]}<extra></extra>",
-        customdata=t2[["full_label", "N"]].to_numpy(),
-    )
-    fig2.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""), yaxis_range=[0, 100], height=430)
-    st.plotly_chart(fig2, use_container_width=True)
 
-    st.markdown("#### Relation between Table 1 and Table 2 aggregate scores")
-    pair = filtered_long[filtered_long["dimension"].isin(["common_general", "causal_agreement"])].copy()
-    pair["response"] = pd.to_numeric(pair["response"], errors="coerce")
-    agg = (
-        pair.groupby(["respondent_id", "dimension"], as_index=False)
-        .agg(mean_response=("response", "mean"))
-        .pivot(index="respondent_id", columns="dimension", values="mean_response")
-        .dropna()
-        .reset_index()
-    )
-    if agg.empty:
-        st.info("Not enough respondent-level data for this plot under current filters.")
+def render_grouped_bars(summary: pd.DataFrame, height: int) -> None:
+    if summary.empty:
         return
-    agg["x"] = mean_to_score_100(agg["common_general"])
-    agg["y"] = mean_to_score_100(agg["causal_agreement"])
 
-    scatter = px.scatter(
-        agg,
-        x="x",
-        y="y",
-        labels={"x": "Table 1 general commonness", "y": "Table 2 theory contribution"},
-        opacity=0.75,
+    fig = px.bar(
+        summary,
+        y="item_name",
+        x="score",
+        color="label",
+        orientation="h",
+        barmode="group",
+        color_discrete_map=COLOR_MAP,
+        text=summary["score"].round(1).map(lambda x: f"{x:.1f}"),
+        labels={"item_name": "Item", "score": "Score (0–100)", "label": ""},
         template="plotly_white",
-        hover_data={"respondent_id": True, "x": ":.1f", "y": ":.1f"},
+        hover_data={"item_name": True, "full_label": True, "score": ":.1f", "N": True},
     )
-    if len(agg) >= 2:
-        slope, intercept = np.polyfit(agg["x"], agg["y"], 1)
-        line_x = np.linspace(agg["x"].min(), agg["x"].max(), 80)
-        scatter.add_trace(go.Scatter(x=line_x, y=slope * line_x + intercept, mode="lines", name="Trend", line=dict(color="#555")))
-    scatter.update_layout(height=420, legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""), xaxis_range=[0, 100], yaxis_range=[0, 100])
-    st.plotly_chart(scatter, use_container_width=True)
-
-
-def wrap_item_labels(series: pd.Series, width: int = 38) -> pd.Series:
-    return series.astype(str).map(lambda s: "<br>".join(textwrap.wrap(s, width=width)))
+    fig.update_traces(
+        textposition="inside",
+        insidetextanchor="middle",
+        textfont=dict(color="white", size=12),
+        cliponaxis=False,
+    )
+    fig.update_layout(
+        height=height,
+        xaxis_range=[0, 100],
+        yaxis={"categoryorder": "array", "categoryarray": list(summary["item_name"].drop_duplicates()[::-1])},
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""),
+        margin=dict(l=20, r=20, t=20, b=20),
+        bargap=0.22,
+        bargroupgap=0.08,
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 
 def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
-    st.subheader("Commonness and harm of candidate features of the current research landscape")
+    st.subheader("Table 1. Diagnoses of the state and status of theory in psychological science")
+    st.write(
+        "These items summarize possible diagnoses of the current state of theorizing and theory development in psychological science. "
+        "The chart shows how common respondents think each phenomenon is, both in their own subfield and in psychology more generally, "
+        "and how harmful they consider it if it occurs."
+    )
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
         return
 
+    ordered_item_names = [TABLE1_ITEM_NAMES[i] for i in range(1, 14)]
     summary = summarize_items(
         filtered_long,
         table=1,
         dimensions=["common_subfield", "common_general", "harmfulness"],
         item_names=item_names,
-        sort_dimension="harmfulness",
+        ordered_item_names=ordered_item_names,
     )
     if summary.empty:
         st.info("No Table 1 responses available under current filters.")
         return
 
-    summary["item_wrapped"] = wrap_item_labels(summary["item_name"])
-    fig = px.bar(
-        summary,
-        y="item_wrapped",
-        x="score",
-        color="label",
-        orientation="h",
-        barmode="group",
-        color_discrete_map=COLOR_MAP,
-        text=summary["score"].round(1).map(lambda x: f"{x:.1f}"),
-        labels={"item_wrapped": "Item", "score": "Score (0–100)", "label": ""},
-        template="plotly_white",
-        hover_data={"item_name": True, "full_label": True, "score": ":.1f", "N": True},
-    )
-    fig.update_traces(textposition="outside")
-    fig.update_layout(
-        height=760,
-        xaxis_range=[0, 100],
-        yaxis={"categoryorder": "array", "categoryarray": list(summary["item_wrapped"].drop_duplicates()[::-1])},
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""),
-        margin=dict(l=20, r=20, t=20, b=20),
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    render_grouped_bars(summary, height=820)
+
+    st.markdown("#### Statement table")
+    render_statement_table(TABLE1_STATEMENT_ROWS)
 
 
 def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
-    st.subheader("Perceived contribution of limited theory development to downstream consequences")
+    st.subheader("Table 2. Consequences of the state and status of theory in psychological science")
+    st.write(
+        "These items summarize possible consequences of limited theory development in psychological science. "
+        "The chart shows the extent to which respondents think insufficient theory development contributes to each consequence "
+        "and how important that contribution is."
+    )
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
         return
 
+    ordered_item_names = [TABLE2_ITEM_NAMES[i] for i in range(1, 6)]
     summary = summarize_items(
         filtered_long,
         table=2,
         dimensions=["causal_agreement", "causal_magnitude"],
         item_names=item_names,
-        sort_dimension="causal_magnitude",
+        ordered_item_names=ordered_item_names,
     )
     if summary.empty:
         st.info("No Table 2 responses available under current filters.")
         return
 
-    summary["item_wrapped"] = wrap_item_labels(summary["item_name"], width=42)
-    fig = px.bar(
-        summary,
-        y="item_wrapped",
-        x="score",
-        color="label",
-        orientation="h",
-        barmode="group",
-        color_discrete_map=COLOR_MAP,
-        text=summary["score"].round(1).map(lambda x: f"{x:.1f}"),
-        labels={"item_wrapped": "Item", "score": "Score (0–100)", "label": ""},
-        template="plotly_white",
-        hover_data={"item_name": True, "full_label": True, "score": ":.1f", "N": True},
-    )
-    fig.update_traces(textposition="outside")
-    fig.update_layout(
-        height=530,
-        xaxis_range=[0, 100],
-        yaxis={"categoryorder": "array", "categoryarray": list(summary["item_wrapped"].drop_duplicates()[::-1])},
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""),
-        margin=dict(l=20, r=20, t=20, b=20),
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    render_grouped_bars(summary, height=560)
+
+    st.markdown("#### Statement table")
+    render_statement_table(TABLE2_STATEMENT_ROWS)
 
 
 def main() -> None:
-    st.title("TheoryState Dashboard")
+    st.title("The state and status of theory in psychological science")
     st.markdown(
-        "This dashboard summarizes responses to the TheoryState survey on theory development in psychological science. "
-        "Scores are shown on a 0–100 scale, where higher values indicate stronger endorsement, greater perceived commonness, "
-        "greater harm, or stronger perceived causal contribution. Use the filters on the left to explore how responses differ "
-        "across work roles, education backgrounds, and subfields."
+        "This dashboard presents results from the survey accompanying the statement *The state and status of theory in psychological science*. "
+        "The statement argues that theory development in psychology is often weakly developed, insufficiently formalized, and poorly "
+        "integrated with empirical research, and that this has important consequences for cumulative progress in the field. "
+        "The full statement is available here: https://doi.org/10.31234/osf.io/2fjx4_v2.\n\n"
+        "The survey asks respondents to evaluate possible diagnoses of the current state of theory development in psychology, as well as "
+        "possible downstream consequences. The objective of the survey is to map where psychological scientists agree or disagree, "
+        "which issues are seen as most important, and how these perspectives may change over time. You can complete the survey here: "
+        "https://forms.gle/etCpCZ9UvSdPFQzb7."
     )
-    st.caption("Scores are based on 1–7 responses transformed to a 0–100 scale.")
+    st.caption("Scores are shown on a 0–100 scale derived from 1–7 survey responses.")
 
     required = [DASHBOARD_FILE, LONG_FILE, ITEM_DICTIONARY_FILE]
     missing = [str(p) for p in required if not p.exists()]
@@ -403,16 +403,15 @@ def main() -> None:
     filter_cols = find_filter_columns(dashboard_df)
     item_names = build_item_name_map(item_dict)
 
-    selections = render_sidebar_filters(dashboard_df, filter_cols)
+    page, selections = render_sidebar_controls(dashboard_df, filter_cols)
     filtered_dashboard = apply_filters(dashboard_df, filter_cols, selections)
     filtered_long = apply_filters(long_df, filter_cols, selections)
     filtered_n = int(filtered_dashboard.shape[0])
-
-    page = st.sidebar.radio("Page", ["Overview", "Table 1: Current research landscape", "Table 2: Consequences"])
+    st.sidebar.markdown(f"**Filtered N:** {filtered_n}")
 
     if page == "Overview":
         render_overview(filtered_long, filtered_n)
-    elif page == "Table 1: Current research landscape":
+    elif page == "Table 1. Diagnoses of the state and status of theory in psychological science":
         render_table1(filtered_long, filtered_n, item_names)
     else:
         render_table2(filtered_long, filtered_n, item_names)
