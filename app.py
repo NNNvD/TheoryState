@@ -20,12 +20,15 @@ ITEM_DICTIONARY_FILE = DERIVED_DIR / "item_dictionary.csv"
 
 FILTERS = {
     "work_status": {
+        "label": "Work in psychological science",
         "source_prompt": "Do you currently work as a psychological scientist (i.e., conduct psychological research or teach psychology/psychological science at a university or research institute)?",
     },
     "education": {
+        "label": "Education in psychology",
         "source_prompt": "What is your highest completed university-level education in psychology/psychological science?",
     },
     "subfield": {
+        "label": "Subfield",
         "source_prompt": "Which option best describes the subfield you currently work in most of the time?",
     },
 }
@@ -165,13 +168,10 @@ def apply_filters(df: pd.DataFrame, filter_cols: dict[str, str], selections: dic
 
 def render_sidebar_controls(dashboard_df: pd.DataFrame, filter_cols: dict[str, str]) -> tuple[str, dict[str, list[str]]]:
     st.sidebar.markdown("### Page")
+    page_options = ["Overview", "Table 1", "Table 2"]
     page = st.sidebar.radio(
         "Choose dashboard page",
-        [
-            "Overview",
-            "Table 1. Diagnoses of the state and status of theory in psychological science",
-            "Table 2. Consequences of the state and status of theory in psychological science",
-        ],
+        page_options,
         label_visibility="collapsed",
     )
 
@@ -193,7 +193,7 @@ def render_sidebar_controls(dashboard_df: pd.DataFrame, filter_cols: dict[str, s
     selections: dict[str, list[str]] = {}
     for key, cfg in FILTERS.items():
         selected_values: list[str] = []
-        with st.sidebar.expander(cfg["source_prompt"], expanded=False):
+        with st.sidebar.expander(cfg["label"], expanded=False):
             for option in options_by_key[key]:
                 checked = st.checkbox(option, key=f"filter_{key}_{option}")
                 if checked:
@@ -411,7 +411,7 @@ def main() -> None:
 
     if page == "Overview":
         render_overview(filtered_long, filtered_n)
-    elif page == "Table 1. Diagnoses of the state and status of theory in psychological science":
+    elif page == "Table 1":
         render_table1(filtered_long, filtered_n, item_names)
     else:
         render_table2(filtered_long, filtered_n, item_names)
