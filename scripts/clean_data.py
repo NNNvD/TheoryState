@@ -32,6 +32,8 @@ BACKGROUND_HINTS = (
     "subfield you currently work",
 )
 COMMENT_HINTS = ("Optional comment", "Final comments")
+WORK_STATUS_HINT = "do you currently work as a psychological scientist"
+ALLOWED_WORK_STATUS_VALUES = {"Yes, primarily", "Yes, partly", "No"}
 
 RESPONSE_DIMENSION_PATTERNS = {
     "common_subfield": "How common is this phenomenon in your subfield today?",
@@ -81,6 +83,21 @@ def infer_background_columns(columns: Iterable[str]) -> list[str]:
 def infer_comment_columns(columns: Iterable[str]) -> list[str]:
     """Identify free-text comments to remove from public dashboard outputs."""
     return [c for c in columns if any(h in c for h in COMMENT_HINTS)]
+
+
+def recode_work_status_column(df: pd.DataFrame) -> pd.DataFrame:
+    """Constrain work-status values to allowed categories, recoding others to 'No'."""
+    work_col = next(
+        (col for col in df.columns if WORK_STATUS_HINT in _normalize(col)),
+        None,
+    )
+    if work_col is None:
+        return df
+
+    recoded = df.copy()
+    cleaned_values = recoded[work_col].astype(str).str.strip()
+    recoded[work_col] = cleaned_values.where(cleaned_values.isin(ALLOWED_WORK_STATUS_VALUES), "No")
+    return recoded
 
 
 def build_item_dictionary(df: pd.DataFrame, background_cols: list[str]) -> pd.DataFrame:
@@ -189,6 +206,7 @@ def main() -> None:
         raw_rows = pd.NA
 
     comment_cols = infer_comment_columns(filtered.columns)
+    filtered = recode_work_status_column(filtered)
     background_cols = infer_background_columns(filtered.columns)
 
     # Dashboard-ready: keep structured background + numeric response columns, remove comments.
