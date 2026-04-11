@@ -266,7 +266,7 @@ def render_statement_table(rows: list[tuple[str, str]]) -> None:
     st.dataframe(table_df, use_container_width=True, hide_index=True)
 
 
-def render_kpi_cards(summary: pd.DataFrame) -> None:
+def render_kpi_cards(summary: pd.DataFrame, respondent_n: int) -> None:
     if summary.empty:
         return
     columns = st.columns(len(summary))
@@ -275,7 +275,7 @@ def render_kpi_cards(summary: pd.DataFrame) -> None:
             st.markdown(f"**{row['label']}**")
             st.metric("Average score", f"{row['score']:.1f}")
             st.progress(float(row["score"] / 100), text=f"{row['score']:.1f} / 100")
-            st.caption(f"N = {int(row['N'])}")
+            st.caption(f"N respondents = {respondent_n} · n responses = {int(row['N'])}")
 
 
 def render_overview_aggregate_chart(summary: pd.DataFrame, title: str) -> None:
@@ -301,7 +301,7 @@ def render_overview_aggregate_chart(summary: pd.DataFrame, title: str) -> None:
             "<b>%{customdata[0]}</b><br>"
             "Score: %{x:.1f}<br>"
             "Average across all filtered items<br>"
-            "N responses: %{customdata[1]}<extra></extra>"
+            "n responses: %{customdata[1]}<extra></extra>"
         ),
     )
     fig.update_layout(
@@ -315,57 +315,51 @@ def render_overview_aggregate_chart(summary: pd.DataFrame, title: str) -> None:
     st.plotly_chart(fig, use_container_width=True)
 
 
-def render_relationship_chart(filtered_long: pd.DataFrame) -> None:
-    required_dimensions = {
-        1: ["common_subfield", "common_general", "harmfulness"],
-        2: ["causal_agreement", "causal_magnitude"],
-    }
-    base = filtered_long[filtered_long["dimension"].isin(required_dimensions[1] + required_dimensions[2])].copy()
+def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
+    all_dimensions = ["common_subfield", "common_general", "harmfulness", "causal_agreement", "causal_magnitude"]
+    base = filtered_long[filtered_long["dimension"].isin(all_dimensions)].copy()
     if base.empty:
         return
     base["response"] = pd.to_numeric(base["response"], errors="coerce")
     base = base.dropna(subset=["response"])
-    table_means = (
-        base.groupby(["respondent_id", "table"], as_index=False)
+    dimension_means = (
+        base.groupby(["respondent_id", "dimension"], as_index=False)
         .agg(mean_response=("response", "mean"))
-        .pivot(index="respondent_id", columns="table", values="mean_response")
+        .pivot(index="respondent_id", columns="dimension", values="mean_response")
         .reset_index()
-        .rename(columns={1: "table1_mean", 2: "table2_mean"})
     )
-    table_means = table_means.dropna(subset=["table1_mean", "table2_mean"])
-    if table_means.empty:
-        st.info("Relationship chart unavailable for the current filter selection.")
+    available_dims = [d for d in all_dimensions if d in dimension_means.columns]
+    if len(available_dims) < 2:
+        st.info("Correlation view unavailable for the current filter selection.")
         return
 
-    table_means["table1_score"] = mean_to_score_100(table_means["table1_mean"])
-    table_means["table2_score"] = mean_to_score_100(table_means["table2_mean"])
-    corr = table_means["table1_score"].corr(table_means["table2_score"])
+    for dim in available_dims:
+        dimension_means[dim] = mean_to_score_100(dimension_means[dim])
 
-    fig = px.scatter(
-        table_means,
-        x="table1_score",
-        y="table2_score",
-        labels={
-            "table1_score": "Average Table 1 score (0–100)",
-            "table2_score": "Average Table 2 score (0–100)",
-        },
-        opacity=0.7,
-        template="plotly_white",
-        custom_data=["respondent_id"],
+    corr_matrix = dimension_means[available_dims].corr()
+    pretty_labels = [OVERVIEW_DIMENSION_LABELS[d] for d in available_dims]
+    corr_matrix.index = pretty_labels
+    corr_matrix.columns = pretty_labels
+
+    fig = px.imshow(
+        corr_matrix,
+        text_auto=".2f",
+        zmin=-1,
+        zmax=1,
+        color_continuous_scale="RdBu_r",
+        aspect="auto",
+        labels={"x": "", "y": "", "color": "Correlation"},
     )
     fig.update_traces(
-        marker=dict(color="#374151", size=8),
         hovertemplate=(
-            "<b>Respondent %{customdata[0]}</b><br>"
-            "Table 1 average: %{x:.1f}<br>"
-            "Table 2 average: %{y:.1f}<br>"
+            "<b>%{y}</b> vs <b>%{x}</b><br>"
+            "Correlation: %{z:.2f}<br>"
             "Average across filtered respondents<extra></extra>"
-        ),
+        )
     )
-    fig.update_layout(height=420, margin=dict(l=10, r=10, t=20, b=20))
+    fig.update_layout(height=520, margin=dict(l=10, r=10, t=20, b=20))
     st.plotly_chart(fig, use_container_width=True)
-    if pd.notna(corr):
-        st.caption(f"Correlation (Pearson r) between respondents’ Table 1 and Table 2 aggregate scores: {corr:.2f}.")
+    st.caption("Pairwise Pearson correlations across the five aggregate dimensions (using respondents in the current filter view).")
 
 
 def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
@@ -376,7 +370,7 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
     st.markdown("### Aggregate Table 1. Diagnoses of the state and status of theory")
     st.write(
         "This chart summarizes responses across the 13 items of the diagnosis of the state and status of theory in "
-        "psychological science (see [statement](https://doi.org/10.31234/osf.io/2fjx4_v2). It shows how common "
+        "psychological science (see [statement](https://doi.org/10.31234/osf.io/2fjx4_v2)). It shows how common "
         "respondents think these candidate problems are in their own subfield, how common they think they are in "
         "psychology overall, and how harmful they judge them to be if they occur. Responses to the 13 items have "
         "been averaged and then transformed to a 0-100 scale (0 = Not common/harmful at all; 100 = Very common/Extremely harmful)."
@@ -385,13 +379,13 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
     t1["label"] = t1["dimension"].map(OVERVIEW_DIMENSION_LABELS)
     t1["full_label"] = t1["label"]
     t1["color"] = t1["dimension"].map(OVERVIEW_COLORS)
-    render_kpi_cards(t1)
+    render_kpi_cards(t1, respondent_n=filtered_n)
     render_overview_aggregate_chart(t1, "Table 1 aggregate scores")
 
     st.markdown("### Aggregate Table 2. Consequences of the state and status of theory")
     st.write(
         "This chart summarizes responses across the 5 items of the consequences of the state and status of theory in "
-        "psychological science (see [statement](https://doi.org/10.31234/osf.io/2fjx4_v2). It shows the extent to "
+        "psychological science (see [statement](https://doi.org/10.31234/osf.io/2fjx4_v2)). It shows the extent to "
         "which respondents think limited theory development contributes (a lot or a bit) to problems such as "
         "*low replication rates, lack of cumulative progress,* and *Overproduction of isolated effects*. Responses "
         "to the 5 items have been averaged and then transformed to a 0-100 scale (0 = Strongly disagree/Negligible cause; "
@@ -401,16 +395,16 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
     t2["label"] = t2["dimension"].map(OVERVIEW_DIMENSION_LABELS)
     t2["full_label"] = t2["label"]
     t2["color"] = t2["dimension"].map(OVERVIEW_COLORS)
-    render_kpi_cards(t2)
+    render_kpi_cards(t2, respondent_n=filtered_n)
     render_overview_aggregate_chart(t2, "Table 2 aggregate scores")
 
     st.markdown("### How these broad perceptions relate to each other")
     st.write(
-        "Each point represents one respondent. The x-axis shows that respondent's average Table 1 score, and the y-axis "
-        "shows their average Table 2 score. Higher values indicate stronger concern about theory problems and stronger "
-        "belief that these problems contribute to downstream consequences."
+        "This heatmap shows pairwise correlations among the five aggregate dimensions. Values near +1 indicate that "
+        "respondents who score high on one dimension also tend to score high on another, while values near 0 indicate "
+        "little linear association."
     )
-    render_relationship_chart(filtered_long)
+    render_correlation_heatmap(filtered_long)
 
 
 def render_grouped_bars(summary: pd.DataFrame, height: int) -> None:
