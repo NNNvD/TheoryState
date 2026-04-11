@@ -22,6 +22,7 @@ FILTERS = {
     "work_status": {
         "label": "Work in psychological science",
         "source_prompt": "Do you currently work as a psychological scientist (i.e., conduct psychological research or teach psychology/psychological science at a university or research institute)?",
+        "allowed_values": ["No", "Yes, partly", "Yes, primarily"],
     },
     "education": {
         "label": "Education in psychology",
@@ -181,7 +182,13 @@ def render_sidebar_controls(dashboard_df: pd.DataFrame, filter_cols: dict[str, s
     for key in FILTERS:
         col = filter_cols.get(key)
         if col and col in dashboard_df.columns:
-            options_by_key[key] = sorted(dashboard_df[col].dropna().astype(str).unique().tolist())
+            options = sorted(dashboard_df[col].dropna().astype(str).unique().tolist())
+            allowed_values = FILTERS[key].get("allowed_values")
+            if allowed_values:
+                allowed_order = {normalize_text(value): idx for idx, value in enumerate(allowed_values)}
+                options = [value for value in options if normalize_text(value) in allowed_order]
+                options = sorted(options, key=lambda value: allowed_order[normalize_text(value)])
+            options_by_key[key] = options
         else:
             options_by_key[key] = []
 
