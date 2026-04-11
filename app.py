@@ -5,7 +5,6 @@ import re
 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
 
 st.set_page_config(
@@ -55,6 +54,22 @@ DIMENSION_META = {
         "short": "Causal importance",
         "full": "How significant is the causal contribution to this phenomenon?",
     },
+}
+
+OVERVIEW_DIMENSION_LABELS = {
+    "common_subfield": "Lack of theory in respondents’ subfield",
+    "common_general": "Lack of theory in psychology overall",
+    "harmfulness": "Lack of theory is harmful",
+    "causal_agreement": "Lack of theory contributes to problems",
+    "causal_magnitude": "Magnitude of this contribution",
+}
+
+OVERVIEW_COLORS = {
+    "common_subfield": "#1f77b4",
+    "common_general": "#ff7f0e",
+    "harmfulness": "#2ca02c",
+    "causal_agreement": "#9467bd",
+    "causal_magnitude": "#d62728",
 }
 
 TABLE1_ITEM_NAMES = {
@@ -246,29 +261,111 @@ def summarize_items(
     return out.sort_values(["item_name", "dimension"])
 
 
-def make_gauge(value: float, label: str, color: str) -> go.Figure:
-    fig = go.Figure(
-        go.Indicator(
-            mode="gauge+number",
-            value=value,
-            number={"valueformat": ".1f", "font": {"size": 34}},
-            title={"text": f"<b>{label}</b>", "font": {"size": 18}},
-            gauge={
-                "axis": {"range": [0, 100], "tickwidth": 1},
-                "bar": {"color": color, "thickness": 0.7},
-                "bgcolor": "#f3f4f6",
-                "borderwidth": 1,
-                "bordercolor": "#d1d5db",
-            },
-        )
-    )
-    fig.update_layout(height=280, margin=dict(l=20, r=20, t=60, b=20), template="plotly_white")
-    return fig
-
-
 def render_statement_table(rows: list[tuple[str, str]]) -> None:
     table_df = pd.DataFrame(rows, columns=["Item", "Description from the statement context"])
     st.dataframe(table_df, use_container_width=True, hide_index=True)
+
+
+def render_kpi_cards(summary: pd.DataFrame) -> None:
+    if summary.empty:
+        return
+    columns = st.columns(len(summary))
+    for col, (_, row) in zip(columns, summary.iterrows()):
+        with col:
+            st.markdown(f"**{row['label']}**")
+            st.metric("Average score", f"{row['score']:.1f}")
+            st.progress(float(row["score"] / 100), text=f"{row['score']:.1f} / 100")
+            st.caption(f"N = {int(row['N'])}")
+
+
+def render_overview_aggregate_chart(summary: pd.DataFrame, title: str) -> None:
+    if summary.empty:
+        st.info("No responses available under current filters.")
+        return
+
+    fig = px.bar(
+        summary,
+        x="score",
+        y="label",
+        orientation="h",
+        color="label",
+        color_discrete_map={label: color for label, color in zip(summary["label"], summary["color"])},
+        text=summary["score"].round(1).map(lambda x: f"{x:.1f}"),
+        labels={"score": "Average score (0–100)", "label": ""},
+        template="plotly_white",
+        custom_data=["full_label", "N"],
+    )
+    fig.update_traces(
+        textposition="outside",
+        hovertemplate=(
+            "<b>%{customdata[0]}</b><br>"
+            "Score: %{x:.1f}<br>"
+            "Average across all filtered items<br>"
+            "N responses: %{customdata[1]}<extra></extra>"
+        ),
+    )
+    fig.update_layout(
+        title=title,
+        showlegend=True,
+        legend_title_text="",
+        height=360,
+        xaxis_range=[0, 100],
+        margin=dict(l=10, r=10, t=60, b=20),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def render_relationship_chart(filtered_long: pd.DataFrame) -> None:
+    required_dimensions = {
+        1: ["common_subfield", "common_general", "harmfulness"],
+        2: ["causal_agreement", "causal_magnitude"],
+    }
+    base = filtered_long[filtered_long["dimension"].isin(required_dimensions[1] + required_dimensions[2])].copy()
+    if base.empty:
+        return
+    base["response"] = pd.to_numeric(base["response"], errors="coerce")
+    base = base.dropna(subset=["response"])
+    table_means = (
+        base.groupby(["respondent_id", "table"], as_index=False)
+        .agg(mean_response=("response", "mean"))
+        .pivot(index="respondent_id", columns="table", values="mean_response")
+        .reset_index()
+        .rename(columns={1: "table1_mean", 2: "table2_mean"})
+    )
+    table_means = table_means.dropna(subset=["table1_mean", "table2_mean"])
+    if table_means.empty:
+        st.info("Relationship chart unavailable for the current filter selection.")
+        return
+
+    table_means["table1_score"] = mean_to_score_100(table_means["table1_mean"])
+    table_means["table2_score"] = mean_to_score_100(table_means["table2_mean"])
+    corr = table_means["table1_score"].corr(table_means["table2_score"])
+
+    fig = px.scatter(
+        table_means,
+        x="table1_score",
+        y="table2_score",
+        labels={
+            "table1_score": "Average Table 1 score (0–100)",
+            "table2_score": "Average Table 2 score (0–100)",
+        },
+        opacity=0.7,
+        template="plotly_white",
+        custom_data=["respondent_id"],
+    )
+    fig.update_traces(
+        marker=dict(color="#374151", size=8),
+        hovertemplate=(
+            "<b>Respondent %{customdata[0]}</b><br>"
+            "Table 1 average: %{x:.1f}<br>"
+            "Table 2 average: %{y:.1f}<br>"
+            "Average across filtered respondents<extra></extra>"
+        ),
+    )
+    fig.update_layout(height=420, margin=dict(l=10, r=10, t=20, b=20))
+    st.plotly_chart(fig, use_container_width=True)
+    if pd.notna(corr):
+        st.caption(f"Correlation (Pearson r) between respondents’ Table 1 and Table 2 aggregate scores: {corr:.2f}.")
 
 
 def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
@@ -276,21 +373,44 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         st.warning("No responses match the current filters.")
         return
 
-    st.markdown("#### Table 1 aggregate summary")
+    st.markdown("### Aggregate Table 1. Diagnoses of the state and status of theory")
+    st.write(
+        "This chart summarizes responses across the 13 items of the diagnosis of the state and status of theory in "
+        "psychological science (see [statement](https://doi.org/10.31234/osf.io/2fjx4_v2). It shows how common "
+        "respondents think these candidate problems are in their own subfield, how common they think they are in "
+        "psychology overall, and how harmful they judge them to be if they occur. Responses to the 13 items have "
+        "been averaged and then transformed to a 0-100 scale (0 = Not common/harmful at all; 100 = Very common/Extremely harmful)."
+    )
     t1 = summarize_by_dimension(filtered_long, 1, ["common_subfield", "common_general", "harmfulness"])
-    cols1 = st.columns(3)
-    for col, (_, row), color in zip(cols1, t1.iterrows(), ["#1f77b4", "#ff7f0e", "#2ca02c"]):
-        with col:
-            st.plotly_chart(make_gauge(row["score"], row["label"], color), use_container_width=True)
+    t1["label"] = t1["dimension"].map(OVERVIEW_DIMENSION_LABELS)
+    t1["full_label"] = t1["label"]
+    t1["color"] = t1["dimension"].map(OVERVIEW_COLORS)
+    render_kpi_cards(t1)
+    render_overview_aggregate_chart(t1, "Table 1 aggregate scores")
 
-    st.markdown("#### Table 2 aggregate summary")
+    st.markdown("### Aggregate Table 2. Consequences of the state and status of theory")
+    st.write(
+        "This chart summarizes responses across the 5 items of the consequences of the state and status of theory in "
+        "psychological science (see [statement](https://doi.org/10.31234/osf.io/2fjx4_v2). It shows the extent to "
+        "which respondents think limited theory development contributes (a lot or a bit) to problems such as "
+        "*low replication rates, lack of cumulative progress,* and *Overproduction of isolated effects*. Responses "
+        "to the 5 items have been averaged and then transformed to a 0-100 scale (0 = Strongly disagree/Negligible cause; "
+        "100 = Strongly agree/Major cause)."
+    )
     t2 = summarize_by_dimension(filtered_long, 2, ["causal_agreement", "causal_magnitude"])
-    cols2 = st.columns([1, 1, 0.2])
-    for col, (_, row), color in zip(cols2[:2], t2.iterrows(), ["#9467bd", "#d62728"]):
-        with col:
-            st.plotly_chart(make_gauge(row["score"], row["label"], color), use_container_width=True)
+    t2["label"] = t2["dimension"].map(OVERVIEW_DIMENSION_LABELS)
+    t2["full_label"] = t2["label"]
+    t2["color"] = t2["dimension"].map(OVERVIEW_COLORS)
+    render_kpi_cards(t2)
+    render_overview_aggregate_chart(t2, "Table 2 aggregate scores")
 
-    st.caption("Aggregate results across all items")
+    st.markdown("### How these broad perceptions relate to each other")
+    st.write(
+        "Each point represents one respondent. The x-axis shows that respondent's average Table 1 score, and the y-axis "
+        "shows their average Table 2 score. Higher values indicate stronger concern about theory problems and stronger "
+        "belief that these problems contribute to downstream consequences."
+    )
+    render_relationship_chart(filtered_long)
 
 
 def render_grouped_bars(summary: pd.DataFrame, height: int) -> None:
