@@ -57,11 +57,19 @@ DIMENSION_META = {
 }
 
 OVERVIEW_DIMENSION_LABELS = {
-    "common_subfield": "Lack of theory in respondents’ subfield",
-    "common_general": "Lack of theory in psychology overall",
-    "harmfulness": "Lack of theory is harmful",
-    "causal_agreement": "Lack of theory contributes to problems",
-    "causal_magnitude": "Magnitude of this contribution",
+    "common_subfield": "Problems common in own subfield",
+    "common_general": "Problems common in psychology overall",
+    "harmfulness": "Problems are harmful",
+    "causal_agreement": "Limited theory contributes to consequences",
+    "causal_magnitude": "Contribution is substantial",
+}
+
+OVERVIEW_DIMENSION_TOOLTIPS = {
+    "common_subfield": "How common are these problems in respondents’ own subfield?",
+    "common_general": "How common are these problems in psychology overall?",
+    "harmfulness": "How harmful are these problems if they occur?",
+    "causal_agreement": "Does limited theory development contribute to these consequences?",
+    "causal_magnitude": "How large is that contribution?",
 }
 
 OVERVIEW_COLORS = {
@@ -338,28 +346,66 @@ def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
 
     corr_matrix = dimension_means[available_dims].corr()
     pretty_labels = [OVERVIEW_DIMENSION_LABELS[d] for d in available_dims]
+    tooltip_labels = [OVERVIEW_DIMENSION_TOOLTIPS[d] for d in available_dims]
     corr_matrix.index = pretty_labels
     corr_matrix.columns = pretty_labels
 
+    n_dims = len(pretty_labels)
+    lower_mask = [[i >= j for j in range(n_dims)] for i in range(n_dims)]
+    heatmap_values = corr_matrix.where(lower_mask)
+
+    text_labels = heatmap_values.copy().astype(object)
+    for i in range(n_dims):
+        for j in range(n_dims):
+            if i == j:
+                text_labels.iat[i, j] = ""
+            elif lower_mask[i][j] and pd.notna(text_labels.iat[i, j]):
+                text_labels.iat[i, j] = f"{float(text_labels.iat[i, j]):.2f}"
+            else:
+                text_labels.iat[i, j] = ""
+
+    strongest_pair = None
+    weakest_pair = None
+    pair_values: list[tuple[str, str, float]] = []
+    for i in range(n_dims):
+        for j in range(i):
+            value = corr_matrix.iat[i, j]
+            if pd.notna(value):
+                pair_values.append((pretty_labels[i], pretty_labels[j], float(value)))
+    if pair_values:
+        strongest_pair = max(pair_values, key=lambda row: row[2])
+        weakest_pair = min(pair_values, key=lambda row: row[2])
+
     fig = px.imshow(
-        corr_matrix,
-        text_auto=".2f",
-        zmin=-1,
+        heatmap_values,
+        text_auto=False,
+        zmin=0,
         zmax=1,
-        color_continuous_scale="RdBu_r",
+        color_continuous_scale="Reds",
         aspect="auto",
-        labels={"x": "", "y": "", "color": "Correlation"},
+        labels={"x": "", "y": "", "color": "Correlation (r)"},
     )
     fig.update_traces(
+        text=text_labels.values,
+        texttemplate="%{text}",
         hovertemplate=(
-            "<b>%{y}</b> vs <b>%{x}</b><br>"
-            "Correlation: %{z:.2f}<br>"
-            "Average across filtered respondents<extra></extra>"
-        )
+            "<b>%{customdata[0]}</b> and <b>%{customdata[1]}</b><br>"
+            "Correlation (r): %{z:.2f}<extra></extra>"
+        ),
+        customdata=[[[tooltip_labels[i], tooltip_labels[j]] for j in range(n_dims)] for i in range(n_dims)],
     )
     fig.update_layout(height=520, margin=dict(l=10, r=10, t=20, b=20))
     st.plotly_chart(fig, use_container_width=True)
-    st.caption("Pairwise Pearson correlations across the five aggregate dimensions (using respondents in the current filter view).")
+    st.caption("Values range from -1 to +1.")
+    if strongest_pair and weakest_pair:
+        st.markdown(
+            (
+                f"**Strongest relationship:** {strongest_pair[0]} ↔ {strongest_pair[1]} "
+                f"(r = {strongest_pair[2]:.2f})  \n"
+                f"**Weakest relationship:** {weakest_pair[0]} ↔ {weakest_pair[1]} "
+                f"(r = {weakest_pair[2]:.2f})"
+            )
+        )
 
 
 def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
@@ -398,13 +444,13 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
     render_kpi_cards(t2, respondent_n=filtered_n)
     render_overview_aggregate_chart(t2, "Table 2 aggregate scores")
 
-    st.markdown("### How these broad perceptions relate to each other")
-    st.write(
-        "This heatmap shows pairwise correlations among the five aggregate dimensions. Values near +1 indicate that "
-        "respondents who score high on one dimension also tend to score high on another, while values near 0 indicate "
-        "little linear association."
-    )
-    render_correlation_heatmap(filtered_long)
+    with st.expander("Relationships among the main survey dimensions", expanded=False):
+        st.markdown("### How perceptions of theory problems and consequences are related")
+        st.write(
+            "This figure shows how strongly the five broad survey dimensions tend to go together across respondents. "
+            "Darker cells indicate stronger positive relationships."
+        )
+        render_correlation_heatmap(filtered_long)
 
 
 def render_grouped_bars(summary: pd.DataFrame, height: int) -> None:
