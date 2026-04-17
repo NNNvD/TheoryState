@@ -156,13 +156,51 @@ TABLE2_STATEMENT_ROWS = [
     ("Weak guidance for application & credibility", "Applied translation and public credibility can suffer when theory is underdeveloped."),
 ]
 
-COLOR_MAP = {
-    "Subfield commonness": "#1f77b4",
-    "General commonness": "#ff7f0e",
-    "Harm if present": "#2ca02c",
-    "Theory contributes": "#9467bd",
-    "Causal importance": "#d62728",
-}
+TABLE1_ITEM_EXPLANATIONS = dict(TABLE1_STATEMENT_ROWS)
+TABLE2_ITEM_EXPLANATIONS = dict(TABLE2_STATEMENT_ROWS)
+
+TABLE1_QUESTION_BLOCKS = [
+    {
+        "dimension": "common_subfield",
+        "question": "How common is this problem in respondents’ own subfield?",
+        "left_anchor": "1 = Not common at all",
+        "right_anchor": "7 = Very common",
+        "color": "#1f77b4",
+    },
+    {
+        "dimension": "common_general",
+        "question": "How common is this problem in psychology overall?",
+        "left_anchor": "1 = Not common at all",
+        "right_anchor": "7 = Very common",
+        "color": "#ff7f0e",
+    },
+    {
+        "dimension": "harmfulness",
+        "question": "If this problem occurs, how harmful is it for psychological science?",
+        "left_anchor": "1 = Not harmful at all",
+        "right_anchor": "7 = Extremely harmful",
+        "color": "#2ca02c",
+    },
+]
+
+TABLE2_QUESTION_BLOCKS = [
+    {
+        "dimension": "causal_agreement",
+        "question": "To what extent do respondents agree that limited theory development contributes to this consequence?",
+        "left_anchor": "1 = Strongly disagree",
+        "right_anchor": "7 = Strongly agree",
+        "color": "#9467bd",
+    },
+    {
+        "dimension": "causal_magnitude",
+        "question": "How large do respondents judge that contribution to be?",
+        "left_anchor": "1 = Negligible cause",
+        "right_anchor": "7 = Major cause",
+        "color": "#d62728",
+    },
+]
+
+ITEM_BLOCK_BAR_HEIGHT = 150
 
 
 def normalize_text(text: str) -> str:
@@ -297,11 +335,6 @@ def summarize_items(
     return out.sort_values(["item_name", "dimension"])
 
 
-def render_statement_table(rows: list[tuple[str, str]]) -> None:
-    table_df = pd.DataFrame(rows, columns=["Item", "Description from the statement context"])
-    st.dataframe(table_df, use_container_width=True, hide_index=True)
-
-
 def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str], respondent_n: int) -> None:
     if summary.empty:
         st.info("No responses available under current filters.")
@@ -336,6 +369,76 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
         left_col.caption(meta["left_anchor"])
         right_col.caption(meta["right_anchor"])
         st.caption(f"N respondents = {respondent_n} · n responses = {int(row['N'])}")
+
+
+def render_item_question_bar(
+    question: str,
+    mean_response: float,
+    left_anchor: str,
+    right_anchor: str,
+    color: str,
+    n_responses: int,
+) -> None:
+    st.markdown(f"**{question}**")
+    fig = px.bar(
+        x=[mean_response],
+        y=["Average response"],
+        orientation="h",
+        range_x=[1, 7],
+        template="plotly_white",
+    )
+    fig.update_traces(
+        marker_color=color,
+        width=[0.55],
+        text=[f"{mean_response:.1f} / 7"],
+        textposition="outside",
+        hovertemplate=f"{question}<br>Mean response: %{{x:.2f}} / 7<extra></extra>",
+    )
+    fig.update_layout(
+        showlegend=False,
+        height=ITEM_BLOCK_BAR_HEIGHT,
+        margin=dict(l=10, r=10, t=8, b=8),
+        yaxis=dict(showticklabels=False, title=""),
+        xaxis=dict(title="", tickmode="array", tickvals=[1, 2, 3, 4, 5, 6, 7]),
+    )
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    left_col, right_col = st.columns(2)
+    left_col.caption(left_anchor)
+    right_col.caption(right_anchor)
+    st.caption(f"n responses = {n_responses}")
+
+
+def render_item_blocks(
+    summary: pd.DataFrame,
+    ordered_item_names: list[str],
+    question_blocks: list[dict[str, str]],
+    descriptions: dict[str, str],
+) -> None:
+    if summary.empty:
+        st.info("No responses available under current filters.")
+        return
+
+    for item_name in ordered_item_names:
+        item_df = summary[summary["item_name"] == item_name].copy()
+        if item_df.empty:
+            continue
+        st.markdown(f"### {item_name}")
+        st.write(descriptions.get(item_name, "No description available yet."))
+        for q in question_blocks:
+            row = item_df[item_df["dimension"] == q["dimension"]]
+            if row.empty:
+                continue
+            mean_response = float(row.iloc[0]["mean_response"])
+            n_responses = int(row.iloc[0]["N"])
+            render_item_question_bar(
+                question=q["question"],
+                mean_response=mean_response,
+                left_anchor=q["left_anchor"],
+                right_anchor=q["right_anchor"],
+                color=q["color"],
+                n_responses=n_responses,
+            )
+        st.markdown("---")
 
 
 def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
@@ -463,47 +566,12 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         render_correlation_heatmap(filtered_long)
 
 
-def render_grouped_bars(summary: pd.DataFrame, height: int) -> None:
-    if summary.empty:
-        return
-
-    fig = px.bar(
-        summary,
-        y="item_name",
-        x="score",
-        color="label",
-        orientation="h",
-        barmode="group",
-        color_discrete_map=COLOR_MAP,
-        text=summary["score"].round(1).map(lambda x: f"{x:.1f}"),
-        labels={"item_name": "Item", "score": "Score (0–100)", "label": ""},
-        template="plotly_white",
-        hover_data={"item_name": True, "full_label": True, "score": ":.1f", "N": True},
-    )
-    fig.update_traces(
-        textposition="inside",
-        insidetextanchor="middle",
-        textfont=dict(color="white", size=12),
-        cliponaxis=False,
-    )
-    fig.update_layout(
-        height=height,
-        xaxis_range=[0, 100],
-        yaxis={"categoryorder": "array", "categoryarray": list(summary["item_name"].drop_duplicates()[::-1])},
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title_text=""),
-        margin=dict(l=20, r=20, t=20, b=20),
-        bargap=0.22,
-        bargroupgap=0.08,
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-
 def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
-    st.subheader("Table 1. Diagnoses of the state and status of theory in psychological science")
+    st.subheader("Table 1: Diagnoses")
     st.write(
-        "These items summarize possible diagnoses of the current state of theorizing and theory development in psychological science. "
-        "The chart shows how common respondents think each phenomenon is, both in their own subfield and in psychology more generally, "
-        "and how harmful they consider it if it occurs."
+        "Table 1 summarizes possible problems in the current state of theory development in psychology. "
+        "Examples include *current quality of theories*, *derivation of testable hypotheses*, *how results inform theory*, "
+        "and *educational neglect*."
     )
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
@@ -521,18 +589,20 @@ def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
         st.info("No Table 1 responses available under current filters.")
         return
 
-    render_grouped_bars(summary, height=820)
-
-    st.markdown("#### Statement table")
-    render_statement_table(TABLE1_STATEMENT_ROWS)
+    render_item_blocks(
+        summary=summary,
+        ordered_item_names=ordered_item_names,
+        question_blocks=TABLE1_QUESTION_BLOCKS,
+        descriptions=TABLE1_ITEM_EXPLANATIONS,
+    )
 
 
 def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
-    st.subheader("Table 2. Consequences of the state and status of theory in psychological science")
+    st.subheader("Table 2: Consequences")
     st.write(
-        "These items summarize possible consequences of limited theory development in psychological science. "
-        "The chart shows the extent to which respondents think insufficient theory development contributes to each consequence "
-        "and how important that contribution is."
+        "Table 2 summarizes possible consequences of limited theory development in psychology. "
+        "Examples include *low replication rates*, *lack of cumulative progress*, *uninterpretable results*, "
+        "and *weak guidance for application and credibility*."
     )
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
@@ -550,10 +620,12 @@ def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
         st.info("No Table 2 responses available under current filters.")
         return
 
-    render_grouped_bars(summary, height=560)
-
-    st.markdown("#### Statement table")
-    render_statement_table(TABLE2_STATEMENT_ROWS)
+    render_item_blocks(
+        summary=summary,
+        ordered_item_names=ordered_item_names,
+        question_blocks=TABLE2_QUESTION_BLOCKS,
+        descriptions=TABLE2_ITEM_EXPLANATIONS,
+    )
 
 
 def main() -> None:
@@ -568,7 +640,7 @@ def main() -> None:
         "which issues are seen as most important, and how these perspectives may change over time. You can complete the survey here: "
         "https://forms.gle/etCpCZ9UvSdPFQzb7."
     )
-    st.caption("Scores are shown on a 0–100 scale derived from 1–7 survey responses.")
+    st.caption("Most results are shown on the original 1–7 survey response scale.")
 
     required = [DASHBOARD_FILE, LONG_FILE, ITEM_DICTIONARY_FILE]
     missing = [str(p) for p in required if not p.exists()]
