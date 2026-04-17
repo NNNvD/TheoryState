@@ -201,10 +201,16 @@ TABLE2_QUESTION_BLOCKS = [
 ]
 
 ITEM_BLOCK_BAR_HEIGHT = 150
+WITHIN_GROUP_GAP_REM = 0.35
+BETWEEN_GROUP_GAP_REM = 1.8
 
 
 def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text)).strip().lower()
+
+
+def add_vertical_gap(rem: float) -> None:
+    st.markdown(f"<div style='height: {rem}rem;'></div>", unsafe_allow_html=True)
 
 
 def mean_to_score_100(series: pd.Series) -> pd.Series:
@@ -341,9 +347,9 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
         return
 
     ordered = summary.set_index("dimension").reindex(dimensions).dropna(subset=["mean_response"])
-    for dimension, row in ordered.iterrows():
+    for idx, (dimension, row) in enumerate(ordered.iterrows()):
         meta = OVERVIEW_QUESTION_BLOCKS[dimension]
-        st.markdown(f"#### {meta['question']}")
+        st.markdown(f"**{meta['question']}**")
         fig = px.bar(
             x=[row["mean_response"]],
             y=["Average response"],
@@ -353,22 +359,25 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
         )
         fig.update_traces(
             marker_color=OVERVIEW_COLORS[dimension],
+            width=[0.55],
             text=[f"{row['mean_response']:.1f} / 7"],
             textposition="outside",
             hovertemplate=f"{meta['question']}<br>Mean response: %{{x:.2f}} / 7<extra></extra>",
         )
         fig.update_layout(
             showlegend=False,
-            height=150,
+            height=ITEM_BLOCK_BAR_HEIGHT,
             margin=dict(l=10, r=10, t=8, b=8),
             yaxis=dict(showticklabels=False, title=""),
             xaxis=dict(title="", tickmode="array", tickvals=[1, 2, 3, 4, 5, 6, 7]),
         )
-        st.plotly_chart(fig, use_container_width=True)
-        left_col, right_col = st.columns(2)
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        left_col, right_col, meta_col = st.columns([1, 1, 0.8])
         left_col.caption(meta["left_anchor"])
         right_col.caption(meta["right_anchor"])
-        st.caption(f"N respondents = {respondent_n} · n responses = {int(row['N'])}")
+        meta_col.caption(f"N={respondent_n} · n={int(row['N'])}")
+        if idx < len(ordered) - 1:
+            add_vertical_gap(WITHIN_GROUP_GAP_REM)
 
 
 def render_item_question_bar(
@@ -402,10 +411,10 @@ def render_item_question_bar(
         xaxis=dict(title="", tickmode="array", tickvals=[1, 2, 3, 4, 5, 6, 7]),
     )
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    left_col, right_col = st.columns(2)
+    left_col, right_col, meta_col = st.columns([1, 1, 0.8])
     left_col.caption(left_anchor)
     right_col.caption(right_anchor)
-    st.caption(f"n responses = {n_responses}")
+    meta_col.caption(f"n={n_responses}")
 
 
 def render_item_blocks(
@@ -424,7 +433,7 @@ def render_item_blocks(
             continue
         st.markdown(f"### {item_name}")
         st.write(descriptions.get(item_name, "No description available yet."))
-        for q in question_blocks:
+        for q_idx, q in enumerate(question_blocks):
             row = item_df[item_df["dimension"] == q["dimension"]]
             if row.empty:
                 continue
@@ -438,7 +447,11 @@ def render_item_blocks(
                 color=q["color"],
                 n_responses=n_responses,
             )
-        st.markdown("---")
+            if q_idx < len(question_blocks) - 1:
+                add_vertical_gap(WITHIN_GROUP_GAP_REM)
+        add_vertical_gap(0.45)
+        st.markdown("<hr style='margin: 0.2rem 0 0 0; border: 0; border-top: 1px solid rgba(49, 51, 63, 0.12);'>", unsafe_allow_html=True)
+        add_vertical_gap(BETWEEN_GROUP_GAP_REM)
 
 
 def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
@@ -543,6 +556,7 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         dimensions=["common_subfield", "common_general", "harmfulness"],
         respondent_n=filtered_n,
     )
+    add_vertical_gap(BETWEEN_GROUP_GAP_REM)
 
     st.markdown("### Aggregate Table 2. Consequences of the state and status of theory")
     st.write(
