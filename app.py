@@ -359,7 +359,7 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
             x=[row["mean_response"]],
             y=["Average response"],
             orientation="h",
-            range_x=[1, 7],
+            range_x=[0.95, 7.05],
             template="plotly_white",
         )
         fig.update_traces(
@@ -375,14 +375,14 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
             margin=dict(l=10, r=10, t=8, b=8),
             yaxis=dict(showticklabels=False, title=""),
             xaxis=dict(
-                title="Survey response scale",
+                title="",
                 tickmode="array",
                 tickvals=[1, 2, 3, 4, 5, 6, 7],
                 ticktext=tick_text,
+                automargin=True,
             ),
         )
-        _, middle_col, _ = st.columns([0.2, 0.6, 0.2])
-        middle_col.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         if idx < len(ordered) - 1:
             add_vertical_gap(0.15)
 
