@@ -218,6 +218,9 @@ def render_top_bar_title() -> None:
     st.markdown(
         f"""
         <style>
+        .block-container {{
+            padding-top: 1rem;
+        }}
         [data-testid="stHeader"] {{
             position: sticky;
         }}
@@ -225,8 +228,8 @@ def render_top_bar_title() -> None:
             content: "{APP_TITLE}";
             position: absolute;
             left: 3.5rem;
-            top: 0.35rem;
-            font-size: 1rem;
+            top: 0.15rem;
+            font-size: 1.35rem;
             font-weight: 600;
             color: rgb(49, 51, 63);
             white-space: nowrap;
