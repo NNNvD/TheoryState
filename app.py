@@ -349,8 +349,14 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
     ordered = summary.set_index("dimension").reindex(dimensions).dropna(subset=["mean_response"])
     for idx, (dimension, row) in enumerate(ordered.iterrows()):
         meta = OVERVIEW_QUESTION_BLOCKS[dimension]
-        st.markdown(f"**{meta['question']}**")
-        st.caption(f"Participants: {respondent_n} · Responses: {int(row['N'])}")
+        st.markdown(
+            (
+                f"**{meta['question']}** "
+                f"<span style='color:#6b7280; font-size:0.9rem;'>"
+                f"Participants: {respondent_n} · Responses: {int(row['N'])}</span>"
+            ),
+            unsafe_allow_html=True,
+        )
         tick_text = [
             meta["left_anchor"] if value == 1 else meta["right_anchor"] if value == 7 else str(value)
             for value in range(1, 8)
@@ -359,7 +365,6 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
             x=[row["mean_response"]],
             y=["Average response"],
             orientation="h",
-            range_x=[0.95, 7.05],
             template="plotly_white",
         )
         fig.update_traces(
@@ -371,20 +376,22 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
         )
         fig.update_layout(
             showlegend=False,
-            height=ITEM_BLOCK_BAR_HEIGHT,
-            margin=dict(l=10, r=10, t=8, b=8),
+            height=110,
+            margin=dict(l=10, r=30, t=2, b=2),
             yaxis=dict(showticklabels=False, title=""),
             xaxis=dict(
                 title="",
                 tickmode="array",
                 tickvals=[1, 2, 3, 4, 5, 6, 7],
                 ticktext=tick_text,
+                range=[0.9, 7.45],
                 automargin=True,
+                tickfont=dict(size=11),
             ),
         )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         if idx < len(ordered) - 1:
-            add_vertical_gap(0.15)
+            add_vertical_gap(0.02)
 
 
 def render_item_question_bar(
