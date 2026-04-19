@@ -661,7 +661,7 @@ def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
 
 
 def main() -> None:
-    st.title("The state and status of theory in psychological science")
+    st.sidebar.title("The state and status of theory in psychological science")
     st.markdown(
         "This dashboard presents results from the survey accompanying the statement *The state and status of theory in psychological science*. "
         "The statement argues that theory development in psychology is often weakly developed, insufficiently formalized, and poorly "
