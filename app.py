@@ -377,8 +377,8 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
         )
         fig.update_layout(
             showlegend=False,
-            height=78,
-            margin=dict(l=8, r=30, t=0, b=0),
+            height=92,
+            margin=dict(l=8, r=30, t=0, b=18),
             yaxis=dict(showticklabels=False, title=""),
             xaxis=dict(
                 title="",
@@ -388,11 +388,14 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
                 range=[0.9, 7.45],
                 automargin=True,
                 tickfont=dict(size=10),
+                showticklabels=True,
+                ticks="outside",
+                ticklen=3,
             ),
         )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         if idx < len(ordered) - 1:
-            add_vertical_gap(0.02)
+            add_vertical_gap(0.0)
 
 
 def render_item_question_bar(
