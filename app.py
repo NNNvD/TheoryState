@@ -351,9 +351,10 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
         meta = OVERVIEW_QUESTION_BLOCKS[dimension]
         st.markdown(
             (
-                f"**{meta['question']}** "
+                "<p style='margin:0 0 0.15rem 0;'>"
+                f"<strong>{meta['question']}</strong> "
                 f"<span style='color:#6b7280; font-size:0.9rem;'>"
-                f"Participants: {respondent_n} · Responses: {int(row['N'])}</span>"
+                f"Participants: {respondent_n} · Responses: {int(row['N'])}</span></p>"
             ),
             unsafe_allow_html=True,
         )
@@ -369,15 +370,15 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
         )
         fig.update_traces(
             marker_color=OVERVIEW_COLORS[dimension],
-            width=[0.55],
+            width=[0.82],
             text=[f"{row['mean_response']:.1f} / 7"],
             textposition="outside",
             hovertemplate=f"{meta['question']}<br>Mean response: %{{x:.2f}} / 7<extra></extra>",
         )
         fig.update_layout(
             showlegend=False,
-            height=110,
-            margin=dict(l=10, r=30, t=2, b=2),
+            height=78,
+            margin=dict(l=8, r=30, t=0, b=0),
             yaxis=dict(showticklabels=False, title=""),
             xaxis=dict(
                 title="",
@@ -386,7 +387,7 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
                 ticktext=tick_text,
                 range=[0.9, 7.45],
                 automargin=True,
-                tickfont=dict(size=11),
+                tickfont=dict(size=10),
             ),
         )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
