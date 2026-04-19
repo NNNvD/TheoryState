@@ -349,12 +349,22 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
     ordered = summary.set_index("dimension").reindex(dimensions).dropna(subset=["mean_response"])
     for idx, (dimension, row) in enumerate(ordered.iterrows()):
         meta = OVERVIEW_QUESTION_BLOCKS[dimension]
-        st.markdown(f"**{meta['question']}**")
+        st.markdown(
+            (
+                f"**{meta['question']}** "
+                f"<span style='color:#6b7280; font-size:0.9rem;'>"
+                f"Participants: {respondent_n} · Responses: {int(row['N'])}</span>"
+            ),
+            unsafe_allow_html=True,
+        )
+        tick_text = [
+            meta["left_anchor"] if value == 1 else meta["right_anchor"] if value == 7 else str(value)
+            for value in range(1, 8)
+        ]
         fig = px.bar(
             x=[row["mean_response"]],
             y=["Average response"],
             orientation="h",
-            range_x=[1, 7],
             template="plotly_white",
         )
         fig.update_traces(
@@ -366,18 +376,22 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
         )
         fig.update_layout(
             showlegend=False,
-            height=ITEM_BLOCK_BAR_HEIGHT,
-            margin=dict(l=10, r=10, t=8, b=8),
+            height=110,
+            margin=dict(l=10, r=30, t=2, b=2),
             yaxis=dict(showticklabels=False, title=""),
-            xaxis=dict(title="", tickmode="array", tickvals=[1, 2, 3, 4, 5, 6, 7]),
+            xaxis=dict(
+                title="",
+                tickmode="array",
+                tickvals=[1, 2, 3, 4, 5, 6, 7],
+                ticktext=tick_text,
+                range=[0.9, 7.45],
+                automargin=True,
+                tickfont=dict(size=11),
+            ),
         )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-        left_col, right_col, meta_col = st.columns([1, 1, 0.8])
-        left_col.caption(meta["left_anchor"])
-        right_col.caption(meta["right_anchor"])
-        meta_col.caption(f"N={respondent_n} · n={int(row['N'])}")
         if idx < len(ordered) - 1:
-            add_vertical_gap(WITHIN_GROUP_GAP_REM)
+            add_vertical_gap(0.02)
 
 
 def render_item_question_bar(
@@ -556,7 +570,7 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         dimensions=["common_subfield", "common_general", "harmfulness"],
         respondent_n=filtered_n,
     )
-    add_vertical_gap(BETWEEN_GROUP_GAP_REM)
+    add_vertical_gap(0.75)
 
     st.markdown("### Aggregate Table 2. Consequences of the state and status of theory")
     st.write(
