@@ -203,6 +203,7 @@ TABLE2_QUESTION_BLOCKS = [
 ITEM_BLOCK_BAR_HEIGHT = 150
 WITHIN_GROUP_GAP_REM = 0.35
 BETWEEN_GROUP_GAP_REM = 1.8
+APP_TITLE = "The state and status of theory in psychological science"
 
 
 def normalize_text(text: str) -> str:
@@ -211,6 +212,30 @@ def normalize_text(text: str) -> str:
 
 def add_vertical_gap(rem: float) -> None:
     st.markdown(f"<div style='height: {rem}rem;'></div>", unsafe_allow_html=True)
+
+
+def render_top_bar_title() -> None:
+    st.markdown(
+        f"""
+        <style>
+        [data-testid="stHeader"] {{
+            position: sticky;
+        }}
+        [data-testid="stHeader"]::after {{
+            content: "{APP_TITLE}";
+            position: absolute;
+            left: 3.5rem;
+            top: 0.35rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: rgb(49, 51, 63);
+            white-space: nowrap;
+            pointer-events: none;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def mean_to_score_100(series: pd.Series) -> pd.Series:
@@ -661,7 +686,7 @@ def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
 
 
 def main() -> None:
-    st.sidebar.title("The state and status of theory in psychological science")
+    render_top_bar_title()
     st.markdown(
         "This dashboard presents results from the survey accompanying the statement *The state and status of theory in psychological science*. "
         "The statement argues that theory development in psychology is often weakly developed, insufficiently formalized, and poorly "
