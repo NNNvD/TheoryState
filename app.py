@@ -133,31 +133,28 @@ TABLE2_ITEM_NAMES = {
 }
 
 TABLE1_STATEMENT_ROWS = [
-    ("Current quality of theories", "Many theories are underspecified, weakly integrated, or insufficiently formalized."),
-    ("Status of theory development", "Theory development is often underprioritized relative to data collection and method-focused work."),
-    ("Derivation of testable hypotheses", "Theories frequently do not generate precise, risky, and discriminative predictions."),
-    ("How results inform theory", "Empirical findings often do not feed back clearly into revising or refining theory."),
-    ("Lack of disambiguation", "Competing explanations are not consistently adjudicated through strong tests."),
-    ("Role of math, logic, and simulations", "Formal tools are underused for clarifying assumptions and implications."),
-    ("Division of labor", "Theory-building and empirical testing are not always coordinated effectively."),
-    ("Overemphasis on methods", "Methodological innovation can outpace substantive theoretical development."),
-    ("Measurement vs. substantive theory", "Measurement and psychometrics can be emphasized without matching progress in substantive theory."),
-    ("Fragmentation across subfields", "Theoretical frameworks are often fragmented across subfields and research traditions."),
-    ("Lack of cumulative record-keeping", "The field lacks strong cumulative structures for tracking theory performance over time."),
-    ("Incentives favor discovery over understanding", "Incentives can reward novel findings more than explanatory integration and understanding."),
-    ("Educational neglect", "Training in formal and cumulative theory development is often limited."),
+    ("Current quality of theories", "Theories are vague, verbal, and weakly predictive; they function more as rhetoric than precise explanatory systems."),
+    ("Status of theory development", "Theory construction is rare and undervalued; description is often mistaken for theorizing."),
+    ("Derivation of testable hypotheses", "Hypotheses are rarely deduced from (formal) theory."),
+    ("How results inform theory", "Findings rarely falsify or refine theory."),
+    ("Lack of disambiguation", "Constructs are undefined and boundary conditions are unclear."),
+    ("Role of math, logic, and simulations", "Formal modeling remains peripheral despite its value for explicating mechanisms and deriving testable predictions."),
+    ("Division of labor", "Lack of specializations for theoretical work vs. empirical research."),
+    ("Overemphasis on methods", "Methodological sophistication eclipses conceptual integration; flexible analyses are rewarded."),
+    ("Measurement vs. substantive theory", "Data models (factor, network) are mistaken for mechanisms."),
+    ("Fragmentation across subfields", "Incompatible constructs and vocabularies impede integration."),
+    ("Lack of cumulative record-keeping", "Few organized comparisons, versioning, and updating of theories."),
+    ("Incentives favor discovery over understanding", "Journals and funders reward empirical novelty and volume over theory development and conceptual integration."),
+    ("Educational neglect", "Curricula underweight theory formation, logic, and modeling."),
 ]
 
 TABLE2_STATEMENT_ROWS = [
-    ("Low replication rates", "Insufficient theory development may contribute to lower reproducibility and replication success."),
-    ("Lack of cumulative progress", "Weak theory development can slow accumulation of coherent, integrative knowledge."),
-    ("Uninterpretable results", "Findings may be difficult to interpret when theoretical commitments are vague or underspecified."),
-    ("Overproduction of isolated effects", "Limited theory can yield many disconnected effects without broader explanatory structure."),
-    ("Weak guidance for application & credibility", "Applied translation and public credibility can suffer when theory is underdeveloped."),
+    ("Low replication rates", "Vague theories can fit any data, false positives included, and there are too few good theories from which to derive hypotheses."),
+    ("Lack of cumulative progress", "Disconnected findings pile up without synthesis. Theories are not updated, and many overlapping theories survive or “fade away” too slowly."),
+    ("Uninterpretable results", "Ambiguous constructs and auxiliaries undermine inference."),
+    ("Overproduction of isolated effects", "A lack of integration and explanatory connections between effects under unifying theories."),
+    ("Weak guidance for application & credibility", "Imprecise theories offer limited leverage, do not allow the derivation of predictions, and undermine trust."),
 ]
-
-TABLE1_ITEM_EXPLANATIONS = dict(TABLE1_STATEMENT_ROWS)
-TABLE2_ITEM_EXPLANATIONS = dict(TABLE2_STATEMENT_ROWS)
 
 TABLE1_QUESTION_BLOCKS = [
     {
@@ -469,7 +466,6 @@ def render_item_blocks(
     summary: pd.DataFrame,
     ordered_item_names: list[str],
     question_blocks: list[dict[str, str]],
-    descriptions: dict[str, str],
 ) -> None:
     if summary.empty:
         st.info("No responses available under current filters.")
@@ -480,7 +476,6 @@ def render_item_blocks(
         if item_df.empty:
             continue
         st.markdown(f"### {item_name}")
-        st.write(descriptions.get(item_name, "No description available yet."))
         for q_idx, q in enumerate(question_blocks):
             row = item_df[item_df["dimension"] == q["dimension"]]
             if row.empty:
@@ -500,6 +495,12 @@ def render_item_blocks(
         add_vertical_gap(0.45)
         st.markdown("<hr style='margin: 0.2rem 0 0 0; border: 0; border-top: 1px solid rgba(49, 51, 63, 0.12);'>", unsafe_allow_html=True)
         add_vertical_gap(BETWEEN_GROUP_GAP_REM)
+
+
+def render_item_description_expander(expander_title: str, description_rows: list[tuple[str, str]]) -> None:
+    with st.expander(expander_title, expanded=False):
+        description_df = pd.DataFrame(description_rows, columns=["Item", "Description"])
+        st.dataframe(description_df, use_container_width=True, hide_index=True)
 
 
 def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
@@ -588,6 +589,28 @@ def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
 
 
 def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
+    st.title("Overview")
+    st.markdown(
+        "This dashboard presents results from the survey accompanying the statement "
+        "[*The state and status of theory in psychological science*](https://doi.org/10.31234/osf.io/2fjx4_v2)."
+    )
+    with st.expander("About this dashboard and survey", expanded=False):
+        st.write(
+            "The statement argues that theory development in psychology is often weaker than it should be for cumulative science. "
+            "Many theories remain mostly verbal, underspecified, and weakly predictive; hypotheses are often not directly derived from theory; "
+            "and new findings often do not strongly constrain, falsify, or refine existing theories."
+        )
+        st.write(
+            "As a result, the field can accumulate many effects and findings without strong integrative explanations that connect results "
+            "across studies and subfields. The statement further argues that this contributes to downstream problems such as low replication "
+            "rates, limited cumulative progress, difficulty interpreting results, and weaker guidance for practical application."
+        )
+        st.markdown(
+            "**You can also complete the survey here:**  \n"
+            "[https://forms.gle/etCpCZ9UvSdPFQzb7](https://forms.gle/etCpCZ9UvSdPFQzb7)"
+        )
+    st.caption("Most results are shown on the original 1–7 survey response scale.")
+
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
         return
@@ -655,7 +678,10 @@ def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
         summary=summary,
         ordered_item_names=ordered_item_names,
         question_blocks=TABLE1_QUESTION_BLOCKS,
-        descriptions=TABLE1_ITEM_EXPLANATIONS,
+    )
+    render_item_description_expander(
+        "View all Table 1 items and descriptions",
+        TABLE1_STATEMENT_ROWS,
     )
 
 
@@ -686,23 +712,15 @@ def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
         summary=summary,
         ordered_item_names=ordered_item_names,
         question_blocks=TABLE2_QUESTION_BLOCKS,
-        descriptions=TABLE2_ITEM_EXPLANATIONS,
+    )
+    render_item_description_expander(
+        "View all Table 2 items and descriptions",
+        TABLE2_STATEMENT_ROWS,
     )
 
 
 def main() -> None:
     render_top_bar_title()
-    st.markdown(
-        "This dashboard presents results from the survey accompanying the statement *The state and status of theory in psychological science*. "
-        "The statement argues that theory development in psychology is often weakly developed, insufficiently formalized, and poorly "
-        "integrated with empirical research, and that this has important consequences for cumulative progress in the field. "
-        "The full statement is available here: https://doi.org/10.31234/osf.io/2fjx4_v2.\n\n"
-        "The survey asks respondents to evaluate possible diagnoses of the current state of theory development in psychology, as well as "
-        "possible downstream consequences. The objective of the survey is to map where psychological scientists agree or disagree, "
-        "which issues are seen as most important, and how these perspectives may change over time. You can complete the survey here: "
-        "https://forms.gle/etCpCZ9UvSdPFQzb7."
-    )
-    st.caption("Most results are shown on the original 1–7 survey response scale.")
 
     required = [DASHBOARD_FILE, LONG_FILE, ITEM_DICTIONARY_FILE]
     missing = [str(p) for p in required if not p.exists()]
