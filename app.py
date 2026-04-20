@@ -203,6 +203,7 @@ TABLE2_QUESTION_BLOCKS = [
 ITEM_BLOCK_BAR_HEIGHT = 150
 WITHIN_GROUP_GAP_REM = 0.35
 BETWEEN_GROUP_GAP_REM = 1.8
+APP_TITLE = "The state and status of theory in psychological science"
 
 
 def normalize_text(text: str) -> str:
@@ -211,6 +212,35 @@ def normalize_text(text: str) -> str:
 
 def add_vertical_gap(rem: float) -> None:
     st.markdown(f"<div style='height: {rem}rem;'></div>", unsafe_allow_html=True)
+
+
+def render_top_bar_title() -> None:
+    st.markdown(
+        f"""
+        <style>
+        .block-container {{
+            padding-top: 1.25rem;
+        }}
+        [data-testid="stHeader"] {{
+            position: sticky;
+            height: 4.2rem;
+            background: white;
+        }}
+        [data-testid="stHeader"]::after {{
+            content: "{APP_TITLE}";
+            position: absolute;
+            left: 3.5rem;
+            top: 0.8rem;
+            font-size: 2.1rem;
+            font-weight: 600;
+            color: rgb(49, 51, 63);
+            white-space: nowrap;
+            pointer-events: none;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def mean_to_score_100(series: pd.Series) -> pd.Series:
@@ -349,35 +379,53 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
     ordered = summary.set_index("dimension").reindex(dimensions).dropna(subset=["mean_response"])
     for idx, (dimension, row) in enumerate(ordered.iterrows()):
         meta = OVERVIEW_QUESTION_BLOCKS[dimension]
-        st.markdown(f"**{meta['question']}**")
+        st.markdown(
+            (
+                "<p style='margin:0 0 0.15rem 0;'>"
+                f"<strong>{meta['question']}</strong> "
+                f"<span style='color:#6b7280; font-size:0.9rem;'>"
+                f"Participants: {respondent_n} · Responses: {int(row['N'])}</span></p>"
+            ),
+            unsafe_allow_html=True,
+        )
+        tick_text = [
+            meta["left_anchor"] if value == 1 else meta["right_anchor"] if value == 7 else str(value)
+            for value in range(1, 8)
+        ]
         fig = px.bar(
             x=[row["mean_response"]],
             y=["Average response"],
             orientation="h",
-            range_x=[1, 7],
             template="plotly_white",
         )
         fig.update_traces(
             marker_color=OVERVIEW_COLORS[dimension],
-            width=[0.55],
+            width=[0.82],
             text=[f"{row['mean_response']:.1f} / 7"],
             textposition="outside",
             hovertemplate=f"{meta['question']}<br>Mean response: %{{x:.2f}} / 7<extra></extra>",
         )
         fig.update_layout(
             showlegend=False,
-            height=ITEM_BLOCK_BAR_HEIGHT,
-            margin=dict(l=10, r=10, t=8, b=8),
+            height=92,
+            margin=dict(l=8, r=30, t=0, b=18),
             yaxis=dict(showticklabels=False, title=""),
-            xaxis=dict(title="", tickmode="array", tickvals=[1, 2, 3, 4, 5, 6, 7]),
+            xaxis=dict(
+                title="",
+                tickmode="array",
+                tickvals=[1, 2, 3, 4, 5, 6, 7],
+                ticktext=tick_text,
+                range=[0.9, 7.45],
+                automargin=True,
+                tickfont=dict(size=10),
+                showticklabels=True,
+                ticks="outside",
+                ticklen=3,
+            ),
         )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-        left_col, right_col, meta_col = st.columns([1, 1, 0.8])
-        left_col.caption(meta["left_anchor"])
-        right_col.caption(meta["right_anchor"])
-        meta_col.caption(f"N={respondent_n} · n={int(row['N'])}")
         if idx < len(ordered) - 1:
-            add_vertical_gap(WITHIN_GROUP_GAP_REM)
+            add_vertical_gap(0.0)
 
 
 def render_item_question_bar(
@@ -556,7 +604,7 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         dimensions=["common_subfield", "common_general", "harmfulness"],
         respondent_n=filtered_n,
     )
-    add_vertical_gap(BETWEEN_GROUP_GAP_REM)
+    add_vertical_gap(0.75)
 
     st.markdown("### Aggregate Table 2. Consequences of the state and status of theory")
     st.write(
@@ -643,7 +691,7 @@ def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
 
 
 def main() -> None:
-    st.title("The state and status of theory in psychological science")
+    render_top_bar_title()
     st.markdown(
         "This dashboard presents results from the survey accompanying the statement *The state and status of theory in psychological science*. "
         "The statement argues that theory development in psychology is often weakly developed, insufficiently formalized, and poorly "
