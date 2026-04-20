@@ -216,7 +216,7 @@ def render_top_bar_title() -> None:
         f"""
         <style>
         .block-container {{
-            padding-top: 1.25rem;
+            padding-top: 0.65rem;
         }}
         [data-testid="stHeader"] {{
             position: sticky;
@@ -376,19 +376,15 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
     ordered = summary.set_index("dimension").reindex(dimensions).dropna(subset=["mean_response"])
     for idx, (dimension, row) in enumerate(ordered.iterrows()):
         meta = OVERVIEW_QUESTION_BLOCKS[dimension]
+        st.markdown(f"<p style='margin:0 0 0.05rem 0;'><strong>{meta['question']}</strong></p>", unsafe_allow_html=True)
         st.markdown(
             (
-                "<p style='margin:0 0 0.15rem 0;'>"
-                f"<strong>{meta['question']}</strong> "
-                f"<span style='color:#6b7280; font-size:0.9rem;'>"
-                f"Participants: {respondent_n} · Responses: {int(row['N'])}</span></p>"
+                "<p style='margin:0 0 0.2rem 0; color:#9ca3af; font-size:0.78rem;'>"
+                f"Participants: {respondent_n} · Responses: {int(row['N'])}</p>"
             ),
             unsafe_allow_html=True,
         )
-        tick_text = [
-            meta["left_anchor"] if value == 1 else meta["right_anchor"] if value == 7 else str(value)
-            for value in range(1, 8)
-        ]
+
         fig = px.bar(
             x=[row["mean_response"]],
             y=["Average response"],
@@ -399,26 +395,52 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
             marker_color=OVERVIEW_COLORS[dimension],
             width=[0.82],
             text=[f"{row['mean_response']:.1f} / 7"],
-            textposition="outside",
+            textposition="inside",
+            insidetextanchor="end",
+            textfont=dict(color="white", size=17),
             hovertemplate=f"{meta['question']}<br>Mean response: %{{x:.2f}} / 7<extra></extra>",
         )
         fig.update_layout(
             showlegend=False,
-            height=92,
-            margin=dict(l=8, r=30, t=0, b=18),
+            height=108,
+            margin=dict(l=8, r=22, t=0, b=32),
             yaxis=dict(showticklabels=False, title=""),
             xaxis=dict(
                 title="",
                 tickmode="array",
                 tickvals=[1, 2, 3, 4, 5, 6, 7],
-                ticktext=tick_text,
-                range=[0.9, 7.45],
-                automargin=True,
-                tickfont=dict(size=10),
+                ticktext=["1", "2", "3", "4", "5", "6", "7"],
+                range=[0.95, 7.1],
+                tickfont=dict(size=9, color="#9ca3af"),
                 showticklabels=True,
                 ticks="outside",
                 ticklen=3,
+                fixedrange=True,
             ),
+            annotations=[
+                dict(
+                    x=1,
+                    y=-0.36,
+                    xref="x",
+                    yref="paper",
+                    text=meta["left_anchor"],
+                    showarrow=False,
+                    xanchor="left",
+                    font=dict(size=11, color="#4b5563"),
+                    align="left",
+                ),
+                dict(
+                    x=7,
+                    y=-0.36,
+                    xref="x",
+                    yref="paper",
+                    text=meta["right_anchor"],
+                    showarrow=False,
+                    xanchor="right",
+                    font=dict(size=11, color="#4b5563"),
+                    align="right",
+                ),
+            ],
         )
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         if idx < len(ordered) - 1:
@@ -589,10 +611,12 @@ def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
 
 
 def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
-    st.title("Overview")
     st.markdown(
+        "<p style='margin:0.05rem 0 0.2rem 0;'>"
         "This dashboard presents results from the survey accompanying the statement "
-        "[*The state and status of theory in psychological science*](https://doi.org/10.31234/osf.io/2fjx4_v2)."
+        "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
+        "</p>",
+        unsafe_allow_html=True,
     )
     with st.expander("About this dashboard and survey", expanded=False):
         st.write(
@@ -609,17 +633,16 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
             "**You can also complete the survey here:**  \n"
             "[https://forms.gle/etCpCZ9UvSdPFQzb7](https://forms.gle/etCpCZ9UvSdPFQzb7)"
         )
-    st.caption("Most results are shown on the original 1–7 survey response scale.")
 
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
         return
 
-    st.markdown("### Aggregate Table 1. Diagnoses of the state and status of theory")
+    st.markdown("### Overall view of possible problems in theory development")
     st.write(
-        "This section summarizes respondents’ views on possible problems in the current state of theory development in "
-        "psychology. It combines responses across the 13 Table 1 topics, including examples such as *current quality of "
-        "theories*, *derivation of testable hypotheses*, *how results inform theory*, and *educational neglect*."
+        "This section summarizes responses across the 13 Table 1 items, which concern possible problems in the current "
+        "state of theory development in psychology. Examples include current quality of theories, derivation of testable "
+        "hypotheses, how results inform theory, and educational neglect."
     )
     t1 = summarize_by_dimension(filtered_long, 1, ["common_subfield", "common_general", "harmfulness"])
     render_overview_question_blocks(
@@ -629,11 +652,11 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
     )
     add_vertical_gap(0.75)
 
-    st.markdown("### Aggregate Table 2. Consequences of the state and status of theory")
+    st.markdown("### Overall view of possible consequences of limited theory development")
     st.write(
-        "This section summarizes respondents’ views on possible consequences of limited theory development. It combines "
-        "responses across the 5 Table 2 topics, including *low replication rates*, *lack of cumulative progress*, "
-        "*uninterpretable results*, and *weak guidance for application and credibility*."
+        "This section summarizes responses across the 5 Table 2 items, which concern possible consequences of limited "
+        "theory development. Examples include low replication rates, lack of cumulative progress, uninterpretable results, "
+        "and weak guidance for application and credibility."
     )
     t2 = summarize_by_dimension(filtered_long, 2, ["causal_agreement", "causal_magnitude"])
     render_overview_question_blocks(
