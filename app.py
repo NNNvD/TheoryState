@@ -219,17 +219,19 @@ def render_top_bar_title() -> None:
         f"""
         <style>
         .block-container {{
-            padding-top: 1rem;
+            padding-top: 1.25rem;
         }}
         [data-testid="stHeader"] {{
             position: sticky;
+            height: 4.2rem;
+            background: white;
         }}
         [data-testid="stHeader"]::after {{
             content: "{APP_TITLE}";
             position: absolute;
             left: 3.5rem;
-            top: 0.15rem;
-            font-size: 1.35rem;
+            top: 0.8rem;
+            font-size: 2.1rem;
             font-weight: 600;
             color: rgb(49, 51, 63);
             white-space: nowrap;
