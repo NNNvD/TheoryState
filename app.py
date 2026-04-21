@@ -653,6 +653,10 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         "state of theory development in psychology. Examples include current quality of theories, derivation of testable "
         "hypotheses, how results inform theory, and educational neglect."
     )
+    render_item_description_expander(
+        "View all Table 1 items and descriptions",
+        TABLE1_STATEMENT_ROWS,
+    )
     t1 = summarize_by_dimension(filtered_long, 1, ["common_subfield", "common_general", "harmfulness"])
     render_overview_question_blocks(
         t1,
@@ -666,6 +670,10 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         "This section summarizes responses across the 5 Table 2 items, which concern possible consequences of limited "
         "theory development. Examples include low replication rates, lack of cumulative progress, uninterpretable results, "
         "and weak guidance for application and credibility."
+    )
+    render_item_description_expander(
+        "View all Table 2 items and descriptions",
+        TABLE2_STATEMENT_ROWS,
     )
     t2 = summarize_by_dimension(filtered_long, 2, ["causal_agreement", "causal_magnitude"])
     render_overview_question_blocks(
@@ -693,11 +701,20 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
 
 def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
     st.subheader("Table 1: Diagnoses")
-    st.write(
-        "Table 1 summarizes possible problems in the current state of theory development in psychology. "
-        "Examples include *current quality of theories*, *derivation of testable hypotheses*, *how results inform theory*, "
-        "and *educational neglect*."
+    st.markdown(
+        "This page presents item-level results for the Table 1 diagnoses in "
+        "[*The state and status of theory in psychological science*](https://doi.org/10.31234/osf.io/2fjx4_v2)."
     )
+    with st.expander("About Table 1", expanded=False):
+        st.write(
+            "Table 1 focuses on possible problems in the current state of theory development in psychology. "
+            "It covers issues such as weak theory specification, limited derivation of hypotheses from theory, "
+            "weak feedback from empirical results into theory revision, fragmentation across subfields, and "
+            "underinvestment in theory-building."
+        )
+        st.write(
+            "This page shows how respondents rated each Table 1 item on the relevant 1–7 survey questions."
+        )
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
         return
@@ -724,11 +741,20 @@ def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
 
 def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
     st.subheader("Table 2: Consequences")
-    st.write(
-        "Table 2 summarizes possible consequences of limited theory development in psychology. "
-        "Examples include *low replication rates*, *lack of cumulative progress*, *uninterpretable results*, "
-        "and *weak guidance for application and credibility*."
+    st.markdown(
+        "This page presents item-level results for the Table 2 consequences in "
+        "[*The state and status of theory in psychological science*](https://doi.org/10.31234/osf.io/2fjx4_v2)."
     )
+    with st.expander("About Table 2", expanded=False):
+        st.write(
+            "Table 2 focuses on possible consequences of limited theory development in psychology. "
+            "These include low replication rates, lack of cumulative progress, uninterpretable results, "
+            "overproduction of isolated effects, and weak guidance for application and credibility."
+        )
+        st.write(
+            "This page shows how respondents rated the extent to which limited theory development contributes "
+            "to each consequence."
+        )
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
         return
