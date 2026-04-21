@@ -715,9 +715,9 @@ def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
 
     st.subheader("Table 1: Diagnoses")
         st.write(
-        "This page presents item-level results for Table 1, which concern possible problems in the current "
-        "state of theory development in psychology."
-    )
+            "This page presents item-level results for Table 1, which concern possible problems in the current "
+            "state of theory development in psychology."
+        )
     render_item_description_expander(
         "View all Table 1 items and descriptions",
         TABLE1_STATEMENT_ROWS,
