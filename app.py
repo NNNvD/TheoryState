@@ -512,7 +512,7 @@ def render_item_blocks(
 def render_item_description_expander(expander_title: str, description_rows: list[tuple[str, str]]) -> None:
     with st.expander(expander_title, expanded=False):
         rows_html = "".join(
-            f"<tr><td style='padding:0.45rem 0.6rem; vertical-align:top; font-weight:600; width:32%;'>{item}</td>"
+            f"<tr><td style='padding:0.45rem 0.6rem; vertical-align:top; font-weight:600; width:24%;'>{item}</td>"
             f"<td style='padding:0.45rem 0.6rem; vertical-align:top;'>{description}</td></tr>"
             for item, description in description_rows
         )
@@ -650,7 +650,8 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
     st.markdown("### Overall view of possible problems in theory development")
     st.write(
         "This section summarizes responses across the 13 Table 1 items, which concern possible problems in the current "
-        "state of theory development in psychology."
+        "state of theory development in psychology. Examples include current quality of theories, derivation of testable "
+        "hypotheses, how results inform theory, and educational neglect."
     )
     render_item_description_expander(
         "View all Table 1 items and descriptions",
@@ -667,7 +668,8 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
     st.markdown("### Overall view of possible consequences of limited theory development")
     st.write(
         "This section summarizes responses across the 5 Table 2 items, which concern possible consequences of limited "
-        "theory development."
+        "theory development. Examples include low replication rates, lack of cumulative progress, uninterpretable results, "
+        "and weak guidance for application and credibility."
     )
     render_item_description_expander(
         "View all Table 2 items and descriptions",
