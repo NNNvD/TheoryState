@@ -690,7 +690,7 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
 
 
 def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
-st.markdown(
+    st.markdown(
         "<p style='margin:0.05rem 0 0.2rem 0;'>"
         "This dashboard presents results from the survey accompanying the statement "
         "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
@@ -714,7 +714,7 @@ st.markdown(
         )
 
     st.subheader("Table 1: Diagnoses")
-    st.write(
+        st.write(
         "This page presents item-level results for Table 1, which concern possible problems in the current "
         "state of theory development in psychology."
     )
@@ -749,13 +749,13 @@ st.markdown(
 
 
 def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
-st.markdown(
+    st.markdown(
         "<p style='margin:0.05rem 0 0.2rem 0;'>"
         "This dashboard presents results from the survey accompanying the statement "
         "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
         "</p>",
         unsafe_allow_html=True,
-    )
+        )
     with st.expander("About this dashboard and survey", expanded=False):
         st.write(
             "The statement argues that theory development in psychology is often weaker than it should be for cumulative science. "
