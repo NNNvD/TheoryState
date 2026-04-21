@@ -679,14 +679,6 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         dimensions=["causal_agreement", "causal_magnitude"],
         respondent_n=filtered_n,
     )
-    render_item_description_expander(
-        "View all Table 1 items and descriptions",
-        TABLE1_STATEMENT_ROWS,
-    )
-    render_item_description_expander(
-        "View all Table 2 items and descriptions",
-        TABLE2_STATEMENT_ROWS,
-    )
 
     with st.expander("Relationships among the main survey dimensions", expanded=False):
         st.markdown("### How perceptions of theory problems and consequences are related")
