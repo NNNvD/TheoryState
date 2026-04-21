@@ -330,17 +330,22 @@ def find_filter_columns(df: pd.DataFrame) -> dict[str, str]:
     return matched
 
 
-def build_item_name_map(item_dict: pd.DataFrame) -> dict[str, str]:
-    name_map: dict[str, str] = {}
-    unique_items = item_dict[["item_id", "item_number", "table"]].drop_duplicates("item_id")
+def build_item_name_map(item_dict: pd.DataFrame) -> dict[tuple[str, int], str]:
+    """Map (item_id, table) pairs to display labels.
+
+    Item ids can repeat across tables in the raw export (e.g., item_01 exists in
+    both Table 1 and Table 2), so table must be part of the lookup key.
+    """
+    name_map: dict[tuple[str, int], str] = {}
+    unique_items = item_dict[["item_id", "item_number", "table"]].drop_duplicates(["item_id", "table"])
     for _, row in unique_items.iterrows():
         item_id = row["item_id"]
         number = int(row["item_number"])
         table = int(row["table"])
         if table == 1:
-            name_map[item_id] = TABLE1_ITEM_NAMES.get(number, f"Table 1 item {number}")
+            name_map[(item_id, table)] = TABLE1_ITEM_NAMES.get(number, f"Table 1 item {number}")
         else:
-            name_map[item_id] = TABLE2_ITEM_NAMES.get(number, f"Table 2 item {number}")
+            name_map[(item_id, table)] = TABLE2_ITEM_NAMES.get(number, f"Table 2 item {number}")
     return name_map
 
 
@@ -414,7 +419,7 @@ def summarize_items(
     filtered_long: pd.DataFrame,
     table: int,
     dimensions: list[str],
-    item_names: dict[str, str],
+    item_names: dict[tuple[str, int], str],
     ordered_item_names: list[str],
 ) -> pd.DataFrame:
     subset = filtered_long[(filtered_long["table"] == table) & (filtered_long["dimension"].isin(dimensions))].copy()
@@ -426,7 +431,10 @@ def summarize_items(
     out["score"] = mean_to_score_100(out["mean_response"])
     out["label"] = out["dimension"].map(lambda d: DIMENSION_META[d]["short"])
     out["full_label"] = out["dimension"].map(lambda d: DIMENSION_META[d]["full"])
-    out["item_name"] = out["item_id"].map(item_names).fillna(out["item_id"])
+    out["item_name"] = out.apply(
+        lambda row: item_names.get((row["item_id"], table), row["item_id"]),
+        axis=1,
+    )
 
     out["item_name"] = pd.Categorical(out["item_name"], categories=ordered_item_names, ordered=True)
     out["dimension"] = pd.Categorical(out["dimension"], categories=dimensions, ordered=True)
