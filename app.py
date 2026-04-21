@@ -314,8 +314,17 @@ def mean_to_score_100(series: pd.Series) -> pd.Series:
     return ((values - 1) / 6) * 100
 
 
+def get_data_version() -> tuple[int, int, int]:
+    """Return file modification times so cache refreshes when data files change."""
+    return (
+        int(DASHBOARD_FILE.stat().st_mtime_ns),
+        int(LONG_FILE.stat().st_mtime_ns),
+        int(ITEM_DICTIONARY_FILE.stat().st_mtime_ns),
+    )
+
+
 @st.cache_data
-def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_data(_data_version: tuple[int, int, int]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     return pd.read_csv(DASHBOARD_FILE), pd.read_csv(LONG_FILE), pd.read_csv(ITEM_DICTIONARY_FILE)
 
 
@@ -837,7 +846,7 @@ def main() -> None:
         st.error("Missing required data files:\n- " + "\n- ".join(missing))
         st.stop()
 
-    dashboard_df, long_df, item_dict = load_data()
+    dashboard_df, long_df, item_dict = load_data(get_data_version())
     filter_cols = find_filter_columns(dashboard_df)
     item_names = build_item_name_map(item_dict)
 
