@@ -690,21 +690,40 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
 
 
 def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
-    st.subheader("Table 1: Diagnoses")
-    st.markdown(
-        "This page presents item-level results for the Table 1 diagnoses in "
-        "[*The state and status of theory in psychological science*](https://doi.org/10.31234/osf.io/2fjx4_v2)."
+st.markdown(
+        "<p style='margin:0.05rem 0 0.2rem 0;'>"
+        "This dashboard presents results from the survey accompanying the statement "
+        "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
+        "</p>",
+        unsafe_allow_html=True,
     )
-    with st.expander("About Table 1", expanded=False):
+    with st.expander("About this dashboard and survey", expanded=False):
         st.write(
-            "Table 1 focuses on possible problems in the current state of theory development in psychology. "
-            "It covers issues such as weak theory specification, limited derivation of hypotheses from theory, "
-            "weak feedback from empirical results into theory revision, fragmentation across subfields, and "
-            "underinvestment in theory-building."
+            "The statement argues that theory development in psychology is often weaker than it should be for cumulative science. "
+            "Many theories remain mostly verbal, underspecified, and weakly predictive; hypotheses are often not directly derived from theory; "
+            "and new findings often do not strongly constrain, falsify, or refine existing theories."
         )
         st.write(
-            "This page shows how respondents rated each Table 1 item on the relevant 1–7 survey questions."
+            "As a result, the field can accumulate many effects and findings without strong integrative explanations that connect results "
+            "across studies and subfields. The statement further argues that this contributes to downstream problems such as low replication "
+            "rates, limited cumulative progress, difficulty interpreting results, and weaker guidance for practical application."
         )
+        st.markdown(
+            "**You can also complete the survey here:**  \n"
+            "[https://forms.gle/etCpCZ9UvSdPFQzb7](https://forms.gle/etCpCZ9UvSdPFQzb7)"
+        )
+
+    st.subheader("Table 1: Diagnoses")
+    st.write(
+        "This page presents item-level results for Table 1, which concern possible problems in the current "
+        "state of theory development in psychology."
+    )
+    render_item_description_expander(
+        "View all Table 1 items and descriptions",
+        TABLE1_STATEMENT_ROWS,
+    )
+
+ 
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
         return
@@ -730,21 +749,40 @@ def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
 
 
 def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
-    st.subheader("Table 2: Consequences")
-    st.markdown(
-        "This page presents item-level results for the Table 2 consequences in "
-        "[*The state and status of theory in psychological science*](https://doi.org/10.31234/osf.io/2fjx4_v2)."
+st.markdown(
+        "<p style='margin:0.05rem 0 0.2rem 0;'>"
+        "This dashboard presents results from the survey accompanying the statement "
+        "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
+        "</p>",
+        unsafe_allow_html=True,
     )
-    with st.expander("About Table 2", expanded=False):
+    with st.expander("About this dashboard and survey", expanded=False):
         st.write(
-            "Table 2 focuses on possible consequences of limited theory development in psychology. "
-            "These include low replication rates, lack of cumulative progress, uninterpretable results, "
-            "overproduction of isolated effects, and weak guidance for application and credibility."
+            "The statement argues that theory development in psychology is often weaker than it should be for cumulative science. "
+            "Many theories remain mostly verbal, underspecified, and weakly predictive; hypotheses are often not directly derived from theory; "
+            "and new findings often do not strongly constrain, falsify, or refine existing theories."
         )
         st.write(
-            "This page shows how respondents rated the extent to which limited theory development contributes "
-            "to each consequence."
+            "As a result, the field can accumulate many effects and findings without strong integrative explanations that connect results "
+            "across studies and subfields. The statement further argues that this contributes to downstream problems such as low replication "
+            "rates, limited cumulative progress, difficulty interpreting results, and weaker guidance for practical application."
         )
+        st.markdown(
+            "**You can also complete the survey here:**  \n"
+            "[https://forms.gle/etCpCZ9UvSdPFQzb7](https://forms.gle/etCpCZ9UvSdPFQzb7)"
+        )
+
+    st.subheader("Table 2: Consequences")
+    st.write(
+        "This page presents item-level results for Table 2, which concern possible consequences of limited "
+        "theory development."
+    )
+    render_item_description_expander(
+        "View all Table 2 items and descriptions",
+        TABLE2_STATEMENT_ROWS,
+    )
+
+        
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
         return
