@@ -65,8 +65,8 @@ OVERVIEW_DIMENSION_LABELS = {
 }
 
 OVERVIEW_DIMENSION_TOOLTIPS = {
-    "common_subfield": "How common are these problems in respondents’ own subfield?",
-    "common_general": "How common are these problems in psychology overall?",
+    "common_subfield": "How common are theory development problems in respondents’ own subfield?",
+    "common_general": "How common are theory development problems in psychology overall?",
     "harmfulness": "How harmful are these problems if they occur?",
     "causal_agreement": "Does limited theory development contribute to these consequences?",
     "causal_magnitude": "How large is that contribution?",
@@ -82,12 +82,12 @@ OVERVIEW_COLORS = {
 
 OVERVIEW_QUESTION_BLOCKS = {
     "common_subfield": {
-        "question": "How common are these problems in respondents’ own subfield?",
+        "question": "How common are theory development problems in respondents’ own subfield?",
         "left_anchor": "1 = Not common at all",
         "right_anchor": "7 = Very common",
     },
     "common_general": {
-        "question": "How common are these problems in psychology overall?",
+        "question": "How common are theory development problems in psychology overall?",
         "left_anchor": "1 = Not common at all",
         "right_anchor": "7 = Very common",
     },
