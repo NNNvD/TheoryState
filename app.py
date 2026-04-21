@@ -211,12 +211,77 @@ def add_vertical_gap(rem: float) -> None:
     st.markdown(f"<div style='height: {rem}rem;'></div>", unsafe_allow_html=True)
 
 
+def render_response_scale_bar(
+    question: str,
+    mean_response: float,
+    left_anchor: str,
+    right_anchor: str,
+    color: str,
+    metadata_text: str,
+) -> None:
+    """Render a compact custom 1-7 response-scale bar without a visible chart axis."""
+    score = max(1.0, min(7.0, float(mean_response)))
+    width_pct = ((score - 1) / 6) * 100
+    min_width_pct = 18
+    filled_width = max(width_pct, min_width_pct if score > 1 else 0)
+
+    st.markdown(
+        f"""
+        <div style="margin: 0 0 0.2rem 0;">
+            <p style="margin: 0 0 0.1rem 0;"><strong>{question}</strong></p>
+            <p style="margin: 0 0 0.25rem 0; color: #9ca3af; font-size: 0.78rem;">{metadata_text}</p>
+            <div style="
+                width: 100%;
+                background: #eef2f7;
+                border-radius: 999px;
+                height: 1.8rem;
+                position: relative;
+                overflow: hidden;
+                border: 1px solid #e5e7eb;
+            ">
+                <div style="
+                    width: {filled_width:.2f}%;
+                    background: {color};
+                    height: 100%;
+                    border-radius: 999px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-end;
+                    padding-right: 0.55rem;
+                    box-sizing: border-box;
+                    transition: width 0.2s ease;
+                ">
+                    <span style="
+                        color: white;
+                        font-size: 1.0rem;
+                        font-weight: 700;
+                        line-height: 1;
+                        white-space: nowrap;
+                    ">{score:.1f} / 7</span>
+                </div>
+            </div>
+            <div style="
+                margin-top: 0.2rem;
+                display: flex;
+                justify-content: space-between;
+                font-size: 0.8rem;
+                color: #4b5563;
+            ">
+                <span>{left_anchor}</span>
+                <span>{right_anchor}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_top_bar_title() -> None:
     st.markdown(
         f"""
         <style>
         .block-container {{
-            padding-top: 1.25rem;
+            padding-top: 0.65rem;
         }}
         [data-testid="stHeader"] {{
             position: sticky;
@@ -376,51 +441,14 @@ def render_overview_question_blocks(summary: pd.DataFrame, dimensions: list[str]
     ordered = summary.set_index("dimension").reindex(dimensions).dropna(subset=["mean_response"])
     for idx, (dimension, row) in enumerate(ordered.iterrows()):
         meta = OVERVIEW_QUESTION_BLOCKS[dimension]
-        st.markdown(
-            (
-                "<p style='margin:0 0 0.15rem 0;'>"
-                f"<strong>{meta['question']}</strong> "
-                f"<span style='color:#6b7280; font-size:0.9rem;'>"
-                f"Participants: {respondent_n} · Responses: {int(row['N'])}</span></p>"
-            ),
-            unsafe_allow_html=True,
+        render_response_scale_bar(
+            question=meta["question"],
+            mean_response=float(row["mean_response"]),
+            left_anchor=meta["left_anchor"],
+            right_anchor=meta["right_anchor"],
+            color=OVERVIEW_COLORS[dimension],
+            metadata_text=f"Participants: {respondent_n} · Responses: {int(row['N'])}",
         )
-        tick_text = [
-            meta["left_anchor"] if value == 1 else meta["right_anchor"] if value == 7 else str(value)
-            for value in range(1, 8)
-        ]
-        fig = px.bar(
-            x=[row["mean_response"]],
-            y=["Average response"],
-            orientation="h",
-            template="plotly_white",
-        )
-        fig.update_traces(
-            marker_color=OVERVIEW_COLORS[dimension],
-            width=[0.82],
-            text=[f"{row['mean_response']:.1f} / 7"],
-            textposition="outside",
-            hovertemplate=f"{meta['question']}<br>Mean response: %{{x:.2f}} / 7<extra></extra>",
-        )
-        fig.update_layout(
-            showlegend=False,
-            height=92,
-            margin=dict(l=8, r=30, t=0, b=18),
-            yaxis=dict(showticklabels=False, title=""),
-            xaxis=dict(
-                title="",
-                tickmode="array",
-                tickvals=[1, 2, 3, 4, 5, 6, 7],
-                ticktext=tick_text,
-                range=[0.9, 7.45],
-                automargin=True,
-                tickfont=dict(size=10),
-                showticklabels=True,
-                ticks="outside",
-                ticklen=3,
-            ),
-        )
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         if idx < len(ordered) - 1:
             add_vertical_gap(0.0)
 
@@ -431,41 +459,24 @@ def render_item_question_bar(
     left_anchor: str,
     right_anchor: str,
     color: str,
+    respondent_n: int,
     n_responses: int,
 ) -> None:
-    st.markdown(f"**{question}**")
-    fig = px.bar(
-        x=[mean_response],
-        y=["Average response"],
-        orientation="h",
-        range_x=[1, 7],
-        template="plotly_white",
+    render_response_scale_bar(
+        question=question,
+        mean_response=mean_response,
+        left_anchor=left_anchor,
+        right_anchor=right_anchor,
+        color=color,
+        metadata_text=f"Participants: {respondent_n} · Responses: {n_responses}",
     )
-    fig.update_traces(
-        marker_color=color,
-        width=[0.55],
-        text=[f"{mean_response:.1f} / 7"],
-        textposition="outside",
-        hovertemplate=f"{question}<br>Mean response: %{{x:.2f}} / 7<extra></extra>",
-    )
-    fig.update_layout(
-        showlegend=False,
-        height=ITEM_BLOCK_BAR_HEIGHT,
-        margin=dict(l=10, r=10, t=8, b=8),
-        yaxis=dict(showticklabels=False, title=""),
-        xaxis=dict(title="", tickmode="array", tickvals=[1, 2, 3, 4, 5, 6, 7]),
-    )
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    left_col, right_col, meta_col = st.columns([1, 1, 0.8])
-    left_col.caption(left_anchor)
-    right_col.caption(right_anchor)
-    meta_col.caption(f"n={n_responses}")
 
 
 def render_item_blocks(
     summary: pd.DataFrame,
     ordered_item_names: list[str],
     question_blocks: list[dict[str, str]],
+    respondent_n: int,
 ) -> None:
     if summary.empty:
         st.info("No responses available under current filters.")
@@ -488,6 +499,7 @@ def render_item_blocks(
                 left_anchor=q["left_anchor"],
                 right_anchor=q["right_anchor"],
                 color=q["color"],
+                respondent_n=respondent_n,
                 n_responses=n_responses,
             )
             if q_idx < len(question_blocks) - 1:
@@ -499,8 +511,27 @@ def render_item_blocks(
 
 def render_item_description_expander(expander_title: str, description_rows: list[tuple[str, str]]) -> None:
     with st.expander(expander_title, expanded=False):
-        description_df = pd.DataFrame(description_rows, columns=["Item", "Description"])
-        st.dataframe(description_df, use_container_width=True, hide_index=True)
+        rows_html = "".join(
+            f"<tr><td style='padding:0.45rem 0.6rem; vertical-align:top; font-weight:600; width:32%;'>{item}</td>"
+            f"<td style='padding:0.45rem 0.6rem; vertical-align:top;'>{description}</td></tr>"
+            for item, description in description_rows
+        )
+        st.markdown(
+            f"""
+            <table style="width:100%; border-collapse:collapse; table-layout:fixed; font-size:0.93rem;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left; padding:0.5rem 0.6rem; border-bottom:1px solid #e5e7eb;">Item</th>
+                        <th style="text-align:left; padding:0.5rem 0.6rem; border-bottom:1px solid #e5e7eb;">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows_html}
+                </tbody>
+            </table>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
@@ -589,10 +620,12 @@ def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
 
 
 def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
-    st.title("Overview")
     st.markdown(
+        "<p style='margin:0.05rem 0 0.2rem 0;'>"
         "This dashboard presents results from the survey accompanying the statement "
-        "[*The state and status of theory in psychological science*](https://doi.org/10.31234/osf.io/2fjx4_v2)."
+        "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
+        "</p>",
+        unsafe_allow_html=True,
     )
     with st.expander("About this dashboard and survey", expanded=False):
         st.write(
@@ -609,17 +642,16 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
             "**You can also complete the survey here:**  \n"
             "[https://forms.gle/etCpCZ9UvSdPFQzb7](https://forms.gle/etCpCZ9UvSdPFQzb7)"
         )
-    st.caption("Most results are shown on the original 1–7 survey response scale.")
 
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
         return
 
-    st.markdown("### Aggregate Table 1. Diagnoses of the state and status of theory")
+    st.markdown("### Overall view of possible problems in theory development")
     st.write(
-        "This section summarizes respondents’ views on possible problems in the current state of theory development in "
-        "psychology. It combines responses across the 13 Table 1 topics, including examples such as *current quality of "
-        "theories*, *derivation of testable hypotheses*, *how results inform theory*, and *educational neglect*."
+        "This section summarizes responses across the 13 Table 1 items, which concern possible problems in the current "
+        "state of theory development in psychology. Examples include current quality of theories, derivation of testable "
+        "hypotheses, how results inform theory, and educational neglect."
     )
     t1 = summarize_by_dimension(filtered_long, 1, ["common_subfield", "common_general", "harmfulness"])
     render_overview_question_blocks(
@@ -629,17 +661,25 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
     )
     add_vertical_gap(0.75)
 
-    st.markdown("### Aggregate Table 2. Consequences of the state and status of theory")
+    st.markdown("### Overall view of possible consequences of limited theory development")
     st.write(
-        "This section summarizes respondents’ views on possible consequences of limited theory development. It combines "
-        "responses across the 5 Table 2 topics, including *low replication rates*, *lack of cumulative progress*, "
-        "*uninterpretable results*, and *weak guidance for application and credibility*."
+        "This section summarizes responses across the 5 Table 2 items, which concern possible consequences of limited "
+        "theory development. Examples include low replication rates, lack of cumulative progress, uninterpretable results, "
+        "and weak guidance for application and credibility."
     )
     t2 = summarize_by_dimension(filtered_long, 2, ["causal_agreement", "causal_magnitude"])
     render_overview_question_blocks(
         t2,
         dimensions=["causal_agreement", "causal_magnitude"],
         respondent_n=filtered_n,
+    )
+    render_item_description_expander(
+        "View all Table 1 items and descriptions",
+        TABLE1_STATEMENT_ROWS,
+    )
+    render_item_description_expander(
+        "View all Table 2 items and descriptions",
+        TABLE2_STATEMENT_ROWS,
     )
 
     with st.expander("Relationships among the main survey dimensions", expanded=False):
@@ -678,10 +718,7 @@ def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
         summary=summary,
         ordered_item_names=ordered_item_names,
         question_blocks=TABLE1_QUESTION_BLOCKS,
-    )
-    render_item_description_expander(
-        "View all Table 1 items and descriptions",
-        TABLE1_STATEMENT_ROWS,
+        respondent_n=filtered_n,
     )
 
 
@@ -712,10 +749,7 @@ def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
         summary=summary,
         ordered_item_names=ordered_item_names,
         question_blocks=TABLE2_QUESTION_BLOCKS,
-    )
-    render_item_description_expander(
-        "View all Table 2 items and descriptions",
-        TABLE2_STATEMENT_ROWS,
+        respondent_n=filtered_n,
     )
 
 
