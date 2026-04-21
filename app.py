@@ -511,12 +511,27 @@ def render_item_blocks(
 
 def render_item_description_expander(expander_title: str, description_rows: list[tuple[str, str]]) -> None:
     with st.expander(expander_title, expanded=False):
-        description_df = pd.DataFrame(description_rows, columns=["Item", "Description"])
-        styled = description_df.style.set_properties(
-            subset=["Item", "Description"],
-            **{"white-space": "normal", "text-align": "left"},
+        rows_html = "".join(
+            f"<tr><td style='padding:0.45rem 0.6rem; vertical-align:top; font-weight:600; width:32%;'>{item}</td>"
+            f"<td style='padding:0.45rem 0.6rem; vertical-align:top;'>{description}</td></tr>"
+            for item, description in description_rows
         )
-        st.table(styled)
+        st.markdown(
+            f"""
+            <table style="width:100%; border-collapse:collapse; table-layout:fixed; font-size:0.93rem;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left; padding:0.5rem 0.6rem; border-bottom:1px solid #e5e7eb;">Item</th>
+                        <th style="text-align:left; padding:0.5rem 0.6rem; border-bottom:1px solid #e5e7eb;">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows_html}
+                </tbody>
+            </table>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
@@ -658,6 +673,14 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         dimensions=["causal_agreement", "causal_magnitude"],
         respondent_n=filtered_n,
     )
+    render_item_description_expander(
+        "View all Table 1 items and descriptions",
+        TABLE1_STATEMENT_ROWS,
+    )
+    render_item_description_expander(
+        "View all Table 2 items and descriptions",
+        TABLE2_STATEMENT_ROWS,
+    )
 
     with st.expander("Relationships among the main survey dimensions", expanded=False):
         st.markdown("### How perceptions of theory problems and consequences are related")
@@ -697,10 +720,6 @@ def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
         question_blocks=TABLE1_QUESTION_BLOCKS,
         respondent_n=filtered_n,
     )
-    render_item_description_expander(
-        "View all Table 1 items and descriptions",
-        TABLE1_STATEMENT_ROWS,
-    )
 
 
 def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
@@ -731,10 +750,6 @@ def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
         ordered_item_names=ordered_item_names,
         question_blocks=TABLE2_QUESTION_BLOCKS,
         respondent_n=filtered_n,
-    )
-    render_item_description_expander(
-        "View all Table 2 items and descriptions",
-        TABLE2_STATEMENT_ROWS,
     )
 
 
