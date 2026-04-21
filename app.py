@@ -156,6 +156,10 @@ TABLE2_STATEMENT_ROWS = [
     ("Weak guidance for application & credibility", "Imprecise theories offer limited leverage, do not allow the derivation of predictions, and undermine trust."),
 ]
 
+
+TABLE1_STATEMENTS = dict(TABLE1_STATEMENT_ROWS)
+TABLE2_STATEMENTS = dict(TABLE2_STATEMENT_ROWS)
+
 TABLE1_QUESTION_BLOCKS = [
     {
         "dimension": "common_subfield",
@@ -485,6 +489,7 @@ def render_item_blocks(
     ordered_item_names: list[str],
     question_blocks: list[dict[str, str]],
     respondent_n: int,
+    item_descriptions: dict[str, str] | None = None,
 ) -> None:
     if summary.empty:
         st.info("No responses available under current filters.")
@@ -495,6 +500,13 @@ def render_item_blocks(
         if item_df.empty:
             continue
         st.markdown(f"### {item_name}")
+        if item_descriptions:
+            description = item_descriptions.get(item_name)
+            if description:
+                st.markdown(
+                    f"<p style='margin: -0.2rem 0 0.35rem 0; color: #374151;'>{description}</p>",
+                    unsafe_allow_html=True,
+                )
         for q_idx, q in enumerate(question_blocks):
             row = item_df[item_df["dimension"] == q["dimension"]]
             if row.empty:
@@ -752,6 +764,7 @@ def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
         ordered_item_names=ordered_item_names,
         question_blocks=TABLE1_QUESTION_BLOCKS,
         respondent_n=filtered_n,
+        item_descriptions=TABLE1_STATEMENTS,
     )
 
 
@@ -811,6 +824,7 @@ def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
         ordered_item_names=ordered_item_names,
         question_blocks=TABLE2_QUESTION_BLOCKS,
         respondent_n=filtered_n,
+        item_descriptions=TABLE2_STATEMENTS,
     )
 
 
