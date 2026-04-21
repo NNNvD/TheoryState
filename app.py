@@ -650,8 +650,7 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
     st.markdown("### Overall view of possible problems in theory development")
     st.write(
         "This section summarizes responses across the 13 Table 1 items, which concern possible problems in the current "
-        "state of theory development in psychology. Examples include current quality of theories, derivation of testable "
-        "hypotheses, how results inform theory, and educational neglect."
+        "state of theory development in psychology."
     )
     render_item_description_expander(
         "View all Table 1 items and descriptions",
@@ -668,8 +667,7 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
     st.markdown("### Overall view of possible consequences of limited theory development")
     st.write(
         "This section summarizes responses across the 5 Table 2 items, which concern possible consequences of limited "
-        "theory development. Examples include low replication rates, lack of cumulative progress, uninterpretable results, "
-        "and weak guidance for application and credibility."
+        "theory development."
     )
     render_item_description_expander(
         "View all Table 2 items and descriptions",
