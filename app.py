@@ -565,6 +565,15 @@ def render_item_description_expander(expander_title: str, description_rows: list
         )
 
 
+def render_item_level_overview_chart(*_args, **_kwargs) -> None:
+    """Deprecated no-op kept for backward compatibility.
+
+    Item-level overview figures were intentionally removed from Diagnoses and
+    Consequences pages. This shim avoids NameError in case stale references are
+    present in older deployments or partially merged branches.
+    """
+
+
 def render_dashboard_intro(expanded: bool) -> None:
     st.markdown(
         "<p style='margin:0.05rem 0 0.2rem 0;'>"
