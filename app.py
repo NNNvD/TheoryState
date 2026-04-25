@@ -33,6 +33,12 @@ FILTERS = {
     },
 }
 
+SUBFIELD_CANONICAL_MAP = {
+    "defelopmental psychology": "Developmental psychology",
+    "developmental psychology": "Developmental psychology",
+    "evolutionary psychology": "Evolutionary Psychology",
+}
+
 DIMENSION_META = {
     "common_subfield": {
         "short": "Subfield commonness",
@@ -325,9 +331,41 @@ def get_data_version() -> tuple[int, int, int]:
     )
 
 
+def canonicalize_subfield_values(df: pd.DataFrame) -> pd.DataFrame:
+    """Canonicalize known subfield spelling/whitespace variants in a dataframe."""
+    normalized = {normalize_text(c): c for c in df.columns}
+    target = normalize_text(FILTERS["subfield"]["source_prompt"])
+
+    subfield_col = normalized.get(target)
+    if subfield_col is None:
+        for ncol, col in normalized.items():
+            if target in ncol or ncol in target:
+                subfield_col = col
+                break
+    if subfield_col is None:
+        return df
+
+    out = df.copy()
+
+    def _canonicalize(value: object) -> object:
+        if pd.isna(value):
+            return value
+        text = str(value).strip()
+        return SUBFIELD_CANONICAL_MAP.get(normalize_text(text), text)
+
+    out[subfield_col] = out[subfield_col].map(_canonicalize)
+    return out
+
+
 @st.cache_data
 def load_data(_data_version: tuple[int, int, int]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    return pd.read_csv(DASHBOARD_FILE), pd.read_csv(LONG_FILE), pd.read_csv(ITEM_DICTIONARY_FILE)
+    dashboard_df = pd.read_csv(DASHBOARD_FILE)
+    long_df = pd.read_csv(LONG_FILE)
+    item_dict = pd.read_csv(ITEM_DICTIONARY_FILE)
+
+    dashboard_df = canonicalize_subfield_values(dashboard_df)
+    long_df = canonicalize_subfield_values(long_df)
+    return dashboard_df, long_df, item_dict
 
 
 def find_filter_columns(df: pd.DataFrame) -> dict[str, str]:
