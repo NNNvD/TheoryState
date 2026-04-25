@@ -761,6 +761,37 @@ def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
         st.info("No Table 1 responses available under current filters.")
         return
 
+    render_item_level_overview_chart(
+        summary=summary,
+        ordered_item_names=ordered_item_names,
+        selector_label="Select question",
+        options={
+            "Common in respondents’ own subfield": {
+                "dimension": "common_subfield",
+                "color": "#1f77b4",
+                "left_anchor": "1 = Not common at all",
+                "right_anchor": "7 = Very common",
+            },
+            "Common in psychology overall": {
+                "dimension": "common_general",
+                "color": "#ff7f0e",
+                "left_anchor": "1 = Not common at all",
+                "right_anchor": "7 = Very common",
+            },
+            "Harmful if present": {
+                "dimension": "harmfulness",
+                "color": "#2ca02c",
+                "left_anchor": "1 = Not harmful at all",
+                "right_anchor": "7 = Extremely harmful",
+            },
+        },
+        description=(
+            "Use the selector below to compare diagnosis items on one survey question at a time. "
+            "Detailed item results are shown further down the page."
+        ),
+    )
+    add_vertical_gap(0.5)
+
     render_item_blocks(
         summary=summary,
         ordered_item_names=ordered_item_names,
@@ -799,6 +830,31 @@ def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
     if summary.empty:
         st.info("No Table 2 responses available under current filters.")
         return
+
+    render_item_level_overview_chart(
+        summary=summary,
+        ordered_item_names=ordered_item_names,
+        selector_label="Select question",
+        options={
+            "Agreement that limited theory development contributes": {
+                "dimension": "causal_agreement",
+                "color": "#9467bd",
+                "left_anchor": "1 = Strongly disagree",
+                "right_anchor": "7 = Strongly agree",
+            },
+            "Magnitude of that contribution": {
+                "dimension": "causal_magnitude",
+                "color": "#d62728",
+                "left_anchor": "1 = Negligible cause",
+                "right_anchor": "7 = Major cause",
+            },
+        },
+        description=(
+            "Use the selector below to compare consequences on one survey question at a time. "
+            "Detailed item results are shown further down the page."
+        ),
+    )
+    add_vertical_gap(0.5)
 
     render_item_blocks(
         summary=summary,
