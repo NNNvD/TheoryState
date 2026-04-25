@@ -595,54 +595,6 @@ def render_dashboard_intro(expanded: bool) -> None:
         )
 
 
-def render_item_level_overview_chart(
-    summary: pd.DataFrame,
-    ordered_item_names: list[str],
-    selector_label: str,
-    options: dict[str, dict[str, str]],
-    description: str,
-) -> None:
-    st.markdown("### Item-level overview")
-    st.write(description)
-    selected_question = st.selectbox(selector_label, options=list(options.keys()))
-    selection = options[selected_question]
-    selected_dimension = selection["dimension"]
-
-    chart_df = summary[summary["dimension"] == selected_dimension].copy()
-    chart_df["item_name"] = chart_df["item_name"].astype(str)
-    if chart_df.empty:
-        st.info("No responses available for this question under current filters.")
-        return
-
-    chart_df = chart_df.sort_values("mean_response", ascending=False)
-    chart_df["label"] = chart_df["mean_response"].map(lambda v: f"Mean: {float(v):.1f} / 7")
-    fig = px.bar(
-        chart_df,
-        x="mean_response",
-        y="item_name",
-        orientation="h",
-        text="label",
-        color_discrete_sequence=[selection["color"]],
-        category_orders={"item_name": chart_df["item_name"].tolist() or ordered_item_names},
-    )
-    fig.update_traces(
-        textposition="inside",
-        insidetextanchor="middle",
-        hovertemplate="<b>%{y}</b><br>Mean: %{x:.2f} / 7<extra></extra>",
-    )
-    fig.update_layout(
-        xaxis=dict(range=[1, 7], title="Mean response (1–7 scale)"),
-        yaxis_title="",
-        margin=dict(l=10, r=10, t=8, b=8),
-        height=max(340, 34 * len(chart_df)),
-    )
-    st.plotly_chart(fig, use_container_width=True)
-    st.caption(
-        f"Scale anchors: **{selection['left_anchor']}** · **{selection['right_anchor']}**. "
-        "Values shown are means."
-    )
-
-
 def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
     all_dimensions = ["common_subfield", "common_general", "harmfulness", "causal_agreement", "causal_magnitude"]
     base = filtered_long[filtered_long["dimension"].isin(all_dimensions)].copy()
