@@ -229,11 +229,13 @@ def render_response_scale_bar(
     min_width_pct = 18
     filled_width = max(width_pct, min_width_pct if score > 1 else 0)
 
+    value_label = f"Mean: {score:.1f} / 7" if score >= 2.2 else f"{score:.1f} / 7"
+
     st.markdown(
         f"""
         <div style="margin: 0 0 0.2rem 0;">
             <p style="margin: 0 0 0.1rem 0;"><strong>{question}</strong></p>
-            <p style="margin: 0 0 0.25rem 0; color: #9ca3af; font-size: 0.78rem;">{metadata_text}</p>
+            <p style="margin: 0 0 0.25rem 0; color: #9ca3af; font-size: 0.78rem;">Bars show mean responses · {metadata_text}</p>
             <div style="
                 width: 100%;
                 background: #eef2f7;
@@ -261,7 +263,7 @@ def render_response_scale_bar(
                         font-weight: 700;
                         line-height: 1;
                         white-space: nowrap;
-                    ">{score:.1f} / 7</span>
+                    ">{value_label}</span>
                 </div>
             </div>
             <div style="
@@ -374,7 +376,7 @@ def apply_filters(df: pd.DataFrame, filter_cols: dict[str, str], selections: dic
 
 def render_sidebar_controls(dashboard_df: pd.DataFrame, filter_cols: dict[str, str]) -> tuple[str, dict[str, list[str]]]:
     st.sidebar.markdown("### Page")
-    page_options = ["Overview", "Table 1", "Table 2"]
+    page_options = ["Overview", "Diagnoses", "Consequences"]
     page = st.sidebar.radio(
         "Choose dashboard page",
         page_options,
@@ -563,6 +565,45 @@ def render_item_description_expander(expander_title: str, description_rows: list
         )
 
 
+def render_item_level_overview_chart(*_args, **_kwargs) -> None:
+    """Deprecated no-op kept for backward compatibility.
+
+    Item-level overview figures were intentionally removed from Diagnoses and
+    Consequences pages. This shim avoids NameError in case stale references are
+    present in older deployments or partially merged branches.
+    """
+
+
+def render_dashboard_intro(expanded: bool) -> None:
+    st.markdown(
+        "<p style='margin:0.05rem 0 0.2rem 0;'>"
+        "This dashboard presents results from the survey accompanying the statement "
+        "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
+        "</p>",
+        unsafe_allow_html=True,
+    )
+    with st.expander("About this dashboard and survey", expanded=expanded):
+        st.write(
+            "The statement argues that theory development in psychology is often weaker than it should be for cumulative science. "
+            "Many theories remain mostly verbal, underspecified, and weakly predictive; hypotheses are often not directly derived from theory; "
+            "and new findings often do not strongly constrain, falsify, or refine existing theories."
+        )
+        st.write(
+            "As a result, the field can accumulate many effects and findings without strong integrative explanations that connect results "
+            "across studies and subfields. The statement further argues that this contributes to downstream problems such as low replication "
+            "rates, limited cumulative progress, difficulty interpreting results, and weaker guidance for practical application."
+        )
+        st.write(
+            "This survey asks psychological scientists to evaluate possible problems in the current state of theory development and "
+            "possible consequences for psychological science. The goal is to collect broad perspectives on which issues are seen as "
+            "common, harmful, or consequential, and to track how these perspectives change over time."
+        )
+        st.markdown(
+            "**You are warmly invited to participate in the survey here:**  \n"
+            "[https://forms.gle/etCpCZ9UvSdPFQzb7](https://forms.gle/etCpCZ9UvSdPFQzb7)"
+        )
+
+
 def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
     all_dimensions = ["common_subfield", "common_general", "harmfulness", "causal_agreement", "causal_magnitude"]
     base = filtered_long[filtered_long["dimension"].isin(all_dimensions)].copy()
@@ -649,37 +690,18 @@ def render_correlation_heatmap(filtered_long: pd.DataFrame) -> None:
 
 
 def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
-    st.markdown(
-        "<p style='margin:0.05rem 0 0.2rem 0;'>"
-        "This dashboard presents results from the survey accompanying the statement "
-        "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
-        "</p>",
-        unsafe_allow_html=True,
-    )
-    with st.expander("About this dashboard and survey", expanded=False):
-        st.write(
-            "The statement argues that theory development in psychology is often weaker than it should be for cumulative science. "
-            "Many theories remain mostly verbal, underspecified, and weakly predictive; hypotheses are often not directly derived from theory; "
-            "and new findings often do not strongly constrain, falsify, or refine existing theories."
-        )
-        st.write(
-            "As a result, the field can accumulate many effects and findings without strong integrative explanations that connect results "
-            "across studies and subfields. The statement further argues that this contributes to downstream problems such as low replication "
-            "rates, limited cumulative progress, difficulty interpreting results, and weaker guidance for practical application."
-        )
-        st.markdown(
-            "**You can also complete the survey here:**  \n"
-            "[https://forms.gle/etCpCZ9UvSdPFQzb7](https://forms.gle/etCpCZ9UvSdPFQzb7)"
-        )
+    render_dashboard_intro(expanded=True)
 
     if filtered_n == 0:
         st.warning("No responses match the current filters.")
         return
 
-    st.markdown("### Overall view of possible problems in theory development")
+    st.markdown("### Overall assessment of problems in theory development")
     st.write(
-        "This section summarizes responses across the 13 Table 1 items, which concern possible problems in the current "
-        "state of theory development in psychology. For example, **theories are vague, verbal, and weakly predictive** and **hypotheses are rarely derived from theories.**"
+        "This section covers overall survey questions related to possible problems in the current state of theory development in psychology. "
+        "These questions concern the diagnoses listed in Table 1 of the statement, such as **weakly specified theories**, "
+        "**limited derivation of hypotheses from theory**, and **weak feedback from empirical results into theory improvement.** "
+        "The bars summarize mean responses across the relevant survey items."
     )
     render_item_description_expander(
         "View all Table 1 items and descriptions",
@@ -693,10 +715,11 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
     )
     add_vertical_gap(0.75)
 
-    st.markdown("### Overall view of possible consequences of limited theory development")
+    st.markdown("### Overall assessment of consequences of weak theory development")
     st.write(
-        "This section summarizes responses across the 5 Table 2 items, which concern possible consequences of limited "
-        "theory development. For example, lack of theory development contributes to **low replication rates** and **overproduction of isolated effects**. "
+        "This section covers overall survey questions related to possible consequences of weak theory development. "
+        "These questions concern the consequences listed in Table 2 of the statement, such as **low replication rates** "
+        "and **overproduction of isolated effects.** The bars summarize mean responses across the relevant survey items."
     )
     render_item_description_expander(
         "View all Table 2 items and descriptions",
@@ -719,30 +742,9 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
 
 
 def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
-    st.markdown(
-        "<p style='margin:0.05rem 0 0.2rem 0;'>"
-        "This dashboard presents results from the survey accompanying the statement "
-        "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
-        "</p>",
-        unsafe_allow_html=True,
-    )
-    with st.expander("About this dashboard and survey", expanded=False):
-        st.write(
-            "The statement argues that theory development in psychology is often weaker than it should be for cumulative science. "
-            "Many theories remain mostly verbal, underspecified, and weakly predictive; hypotheses are often not directly derived from theory; "
-            "and new findings often do not strongly constrain, falsify, or refine existing theories."
-        )
-        st.write(
-            "As a result, the field can accumulate many effects and findings without strong integrative explanations that connect results "
-            "across studies and subfields. The statement further argues that this contributes to downstream problems such as low replication "
-            "rates, limited cumulative progress, difficulty interpreting results, and weaker guidance for practical application."
-        )
-        st.markdown(
-            "**You can also complete the survey here:**  \n"
-            "[https://forms.gle/etCpCZ9UvSdPFQzb7](https://forms.gle/etCpCZ9UvSdPFQzb7)"
-        )
+    render_dashboard_intro(expanded=False)
 
-    st.subheader("Table 1: Diagnoses")
+    st.subheader("Diagnoses: Problems in Theory Development")
     st.write(
         "This page presents item-level results for Table 1, which concern possible problems in the current "
         "state of theory development in psychology."
@@ -778,30 +780,9 @@ def render_table1(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
 
 
 def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict[str, str]) -> None:
-    st.markdown(
-        "<p style='margin:0.05rem 0 0.2rem 0;'>"
-        "This dashboard presents results from the survey accompanying the statement "
-        "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
-        "</p>",
-        unsafe_allow_html=True,
-        )
-    with st.expander("About this dashboard and survey", expanded=False):
-        st.write(
-            "The statement argues that theory development in psychology is often weaker than it should be for cumulative science. "
-            "Many theories remain mostly verbal, underspecified, and weakly predictive; hypotheses are often not directly derived from theory; "
-            "and new findings often do not strongly constrain, falsify, or refine existing theories."
-        )
-        st.write(
-            "As a result, the field can accumulate many effects and findings without strong integrative explanations that connect results "
-            "across studies and subfields. The statement further argues that this contributes to downstream problems such as low replication "
-            "rates, limited cumulative progress, difficulty interpreting results, and weaker guidance for practical application."
-        )
-        st.markdown(
-            "**You can also complete the survey here:**  \n"
-            "[https://forms.gle/etCpCZ9UvSdPFQzb7](https://forms.gle/etCpCZ9UvSdPFQzb7)"
-        )
+    render_dashboard_intro(expanded=False)
 
-    st.subheader("Table 2: Consequences")
+    st.subheader("Consequences: Effects of Weak Theory Development")
     st.write(
         "This page presents item-level results for Table 2, which concern possible consequences of limited "
         "theory development."
@@ -858,7 +839,7 @@ def main() -> None:
 
     if page == "Overview":
         render_overview(filtered_long, filtered_n)
-    elif page == "Table 1":
+    elif page == "Diagnoses":
         render_table1(filtered_long, filtered_n, item_names)
     else:
         render_table2(filtered_long, filtered_n, item_names)
