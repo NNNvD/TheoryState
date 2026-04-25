@@ -34,6 +34,12 @@ BACKGROUND_HINTS = (
 COMMENT_HINTS = ("Optional comment", "Final comments")
 WORK_STATUS_HINT = "do you currently work as a psychological scientist"
 ALLOWED_WORK_STATUS_VALUES = {"Yes, primarily", "Yes, partly", "No"}
+SUBFIELD_HINT = "which option best describes the subfield you currently work in most of the time?"
+SUBFIELD_CANONICAL_MAP = {
+    "defelopmental psychology": "Developmental psychology",
+    "developmental psychology": "Developmental psychology",
+    "evolutionary psychology": "Evolutionary Psychology",
+}
 
 RESPONSE_DIMENSION_PATTERNS = {
     "common_subfield": "How common is this phenomenon in your subfield today?",
@@ -97,6 +103,22 @@ def recode_work_status_column(df: pd.DataFrame) -> pd.DataFrame:
     recoded = df.copy()
     cleaned_values = recoded[work_col].astype(str).str.strip()
     recoded[work_col] = cleaned_values.where(cleaned_values.isin(ALLOWED_WORK_STATUS_VALUES), "No")
+    return recoded
+
+
+def recode_subfield_column(df: pd.DataFrame) -> pd.DataFrame:
+    """Collapse known subfield duplicates/typos to canonical labels."""
+    subfield_col = next(
+        (col for col in df.columns if SUBFIELD_HINT in _normalize(col)),
+        None,
+    )
+    if subfield_col is None:
+        return df
+
+    recoded = df.copy()
+    cleaned_values = recoded[subfield_col].astype(str).str.strip()
+    canonicalized = cleaned_values.map(lambda v: SUBFIELD_CANONICAL_MAP.get(_normalize(v), v))
+    recoded[subfield_col] = canonicalized
     return recoded
 
 
@@ -207,6 +229,7 @@ def main() -> None:
 
     comment_cols = infer_comment_columns(filtered.columns)
     filtered = recode_work_status_column(filtered)
+    filtered = recode_subfield_column(filtered)
     background_cols = infer_background_columns(filtered.columns)
 
     # Dashboard-ready: keep structured background + numeric response columns, remove comments.
