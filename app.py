@@ -240,8 +240,8 @@ def render_response_scale_bar(
     st.markdown(
         f"""
         <div style="margin: 0 0 0.2rem 0;">
-            <p style="margin: 0 0 0.1rem 0;"><strong>{question}</strong></p>
-            <p style="margin: 0 0 0.25rem 0; color: #9ca3af; font-size: 0.78rem;">Bars show mean responses · {metadata_text}</p>
+            <p class="response-scale-question" style="margin: 0 0 0.1rem 0;"><strong>{question}</strong></p>
+            <p class="response-scale-meta" style="margin: 0 0 0.25rem 0; color: #9ca3af; font-size: 0.78rem;">Bars show mean responses · {metadata_text}</p>
             <div style="
                 width: 100%;
                 background: #eef2f7;
@@ -263,7 +263,7 @@ def render_response_scale_bar(
                     box-sizing: border-box;
                     transition: width 0.2s ease;
                 ">
-                    <span style="
+                    <span class="response-scale-value" style="
                         color: white;
                         font-size: 1.0rem;
                         font-weight: 700;
@@ -272,7 +272,7 @@ def render_response_scale_bar(
                     ">{value_label}</span>
                 </div>
             </div>
-            <div style="
+            <div class="response-scale-anchors" style="
                 margin-top: 0.2rem;
                 display: flex;
                 justify-content: space-between;
@@ -292,6 +292,9 @@ def render_top_bar_title() -> None:
     st.markdown(
         f"""
         <style>
+        html, body, [data-testid="stAppViewContainer"], [data-testid="stAppViewContainer"] * {{
+            overflow-wrap: anywhere;
+        }}
         .block-container {{
             padding-top: 0.65rem;
         }}
@@ -308,8 +311,65 @@ def render_top_bar_title() -> None:
             font-size: 2.1rem;
             font-weight: 600;
             color: rgb(49, 51, 63);
-            white-space: nowrap;
+            white-space: normal;
+            max-width: min(82vw, 1100px);
+            line-height: 1.1;
             pointer-events: none;
+        }}
+        [data-testid="stExpander"] summary p,
+        [data-testid="stMarkdownContainer"] p,
+        [data-testid="stMarkdownContainer"] li,
+        a {{
+            overflow-wrap: anywhere !important;
+            word-break: break-word;
+        }}
+        @media (max-width: 768px) {{
+            .block-container {{
+                padding-top: 0.2rem;
+                padding-bottom: 90px;
+            }}
+            [data-testid="stHeader"] {{
+                height: 3.5rem;
+            }}
+            [data-testid="stHeader"]::after {{
+                content: "TheoryState Dashboard";
+                left: 1rem;
+                top: 0.7rem;
+                font-size: 1.75rem;
+                max-width: calc(100vw - 1.4rem);
+            }}
+            h2, .stSubheader {{
+                font-size: 1.32rem !important;
+            }}
+            h3 {{
+                font-size: 1.2rem !important;
+            }}
+            p, li, div[data-testid="stExpanderDetails"] p {{
+                font-size: 0.98rem !important;
+                line-height: 1.4;
+            }}
+            .response-scale-question {{
+                font-size: 0.95rem !important;
+            }}
+            .response-scale-meta {{
+                font-size: 0.8rem !important;
+            }}
+            .response-scale-value {{
+                font-size: 0.9rem !important;
+            }}
+            .response-scale-anchors {{
+                font-size: 0.76rem !important;
+            }}
+            .mobile-intro {{
+                margin: 0.05rem 0 0.25rem 0 !important;
+                font-size: 0.97rem !important;
+            }}
+            .item-description {{
+                margin: -0.15rem 0 0.2rem 0 !important;
+            }}
+            [data-testid="stExpander"] details[open] > div[role="region"] {{
+                display: none;
+            }}
         }}
         </style>
         """,
@@ -421,8 +481,6 @@ def render_sidebar_controls(dashboard_df: pd.DataFrame, filter_cols: dict[str, s
         label_visibility="collapsed",
     )
 
-    st.sidebar.markdown("### Filters")
-
     options_by_key: dict[str, list[str]] = {}
     for key in FILTERS:
         col = filter_cols.get(key)
@@ -437,20 +495,21 @@ def render_sidebar_controls(dashboard_df: pd.DataFrame, filter_cols: dict[str, s
         else:
             options_by_key[key] = []
 
-    if st.sidebar.button("Reset filters", use_container_width=True):
-        for key, options in options_by_key.items():
-            for option in options:
-                st.session_state[f"filter_{key}_{option}"] = False
-
     selections: dict[str, list[str]] = {}
-    for key, cfg in FILTERS.items():
-        selected_values: list[str] = []
-        with st.sidebar.expander(cfg["label"], expanded=False):
-            for option in options_by_key[key]:
-                checked = st.checkbox(option, key=f"filter_{key}_{option}")
-                if checked:
-                    selected_values.append(option)
-        selections[key] = selected_values
+    with st.sidebar.expander("Filter results", expanded=False):
+        if st.button("Reset filters", use_container_width=True):
+            for key, options in options_by_key.items():
+                for option in options:
+                    st.session_state[f"filter_{key}_{option}"] = False
+
+        for key, cfg in FILTERS.items():
+            selected_values: list[str] = []
+            with st.expander(cfg["label"], expanded=False):
+                for option in options_by_key[key]:
+                    checked = st.checkbox(option, key=f"filter_{key}_{option}")
+                    if checked:
+                        selected_values.append(option)
+            selections[key] = selected_values
 
     return page, selections
 
@@ -553,7 +612,7 @@ def render_item_blocks(
             description = item_descriptions.get(item_name)
             if description:
                 st.markdown(
-                    f"<p style='margin: -0.2rem 0 0.35rem 0; color: #374151;'>{description}</p>",
+                    f"<p class='item-description' style='margin: -0.2rem 0 0.35rem 0; color: #374151;'>{description}</p>",
                     unsafe_allow_html=True,
                 )
         for q_idx, q in enumerate(question_blocks):
@@ -614,8 +673,8 @@ def render_item_level_overview_chart(*_args, **_kwargs) -> None:
 
 def render_dashboard_intro(expanded: bool) -> None:
     st.markdown(
-        "<p style='margin:0.05rem 0 0.2rem 0;'>"
-        "This dashboard presents results from the survey accompanying the statement "
+        "<p class='mobile-intro' style='margin:0.05rem 0 0.2rem 0;'>"
+        "Results from the survey accompanying "
         "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
         "</p>",
         unsafe_allow_html=True,
