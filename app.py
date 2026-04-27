@@ -507,19 +507,38 @@ def render_sidebar_controls(dashboard_df: pd.DataFrame, filter_cols: dict[str, s
         else:
             options_by_key[key] = []
 
-    if st.sidebar.button("Reset filters", use_container_width=True):
-        for key in FILTERS:
-            st.session_state[f"filter_{key}_selected"] = []
+    checkbox_keys: list[str] = []
+    for key, options in options_by_key.items():
+        for option in options:
+            state_key = f"filter_{key}_{option}"
+            checkbox_keys.append(state_key)
+            if state_key not in st.session_state:
+                st.session_state[state_key] = True
+
+    select_all_col, select_none_col = st.sidebar.columns(2)
+    select_all = select_all_col.button("Select all", use_container_width=True)
+    select_none = select_none_col.button("Select none", use_container_width=True)
+
+    if select_all:
+        for state_key in checkbox_keys:
+            st.session_state[state_key] = True
+    elif select_none:
+        for state_key in checkbox_keys:
+            st.session_state[state_key] = False
 
     selections: dict[str, list[str]] = {}
     for key, cfg in FILTERS.items():
-        selections[key] = st.sidebar.multiselect(
-            cfg["label"],
-            options=options_by_key[key],
-            default=st.session_state.get(f"filter_{key}_selected", []),
-            help=cfg["source_prompt"],
-            key=f"filter_{key}_selected",
-        )
+        selected_values: list[str] = []
+        with st.sidebar.expander(cfg["label"], expanded=False):
+            for option in options_by_key[key]:
+                checked = st.checkbox(
+                    option,
+                    key=f"filter_{key}_{option}",
+                    help=cfg["source_prompt"],
+                )
+                if checked:
+                    selected_values.append(option)
+        selections[key] = selected_values
 
     return page, selections
 
