@@ -210,9 +210,6 @@ TABLE2_QUESTION_BLOCKS = [
 ITEM_BLOCK_BAR_HEIGHT = 150
 WITHIN_GROUP_GAP_REM = 0.35
 BETWEEN_GROUP_GAP_REM = 1.8
-APP_TITLE = "The state and status of theory in psychological science"
-
-
 def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text)).strip().lower()
 
@@ -295,26 +292,34 @@ def render_top_bar_title() -> None:
         html, body, [data-testid="stAppViewContainer"], [data-testid="stAppViewContainer"] * {{
             overflow-wrap: anywhere;
         }}
+        html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
+            max-width: 100%;
+            overflow-x: hidden;
+        }}
         .block-container {{
-            padding-top: 0.65rem;
+            padding-top: 0.9rem;
+            max-width: 100%;
         }}
-        [data-testid="stHeader"] {{
-            position: sticky;
-            height: 4.2rem;
-            background: white;
-        }}
-        [data-testid="stHeader"]::after {{
-            content: "{APP_TITLE}";
-            position: absolute;
-            left: 3.5rem;
-            top: 0.8rem;
-            font-size: 2.1rem;
-            font-weight: 600;
-            color: rgb(49, 51, 63);
-            white-space: normal;
-            max-width: min(82vw, 1100px);
+        .app-title {{
+            display: block;
+            margin: 0.05rem 0 1.35rem 0;
             line-height: 1.1;
-            pointer-events: none;
+            color: rgb(49, 51, 63);
+        }}
+        .title-desktop {{
+            display: inline;
+            font-size: 2.9rem;
+            font-weight: 700;
+        }}
+        .title-mobile {{
+            display: none;
+        }}
+        [data-testid="stExpander"], [data-testid="stExpander"] * {{
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        [data-testid="stSidebar"] {{
+            max-width: min(22rem, 90vw);
         }}
         [data-testid="stExpander"] summary p,
         [data-testid="stMarkdownContainer"] p,
@@ -325,18 +330,31 @@ def render_top_bar_title() -> None:
         }}
         @media (max-width: 768px) {{
             .block-container {{
-                padding-top: 0.2rem;
+                padding-top: 0.95rem;
                 padding-bottom: 90px;
             }}
-            [data-testid="stHeader"] {{
-                height: 3.5rem;
+            .app-title {{
+                margin: 0.2rem 0 0.35rem 0;
+                max-width: 100%;
+                padding-right: 4.25rem;
+                padding-top: 0.2rem;
+                white-space: normal;
             }}
-            [data-testid="stHeader"]::after {{
-                content: "TheoryState Dashboard";
-                left: 1rem;
-                top: 0.7rem;
-                font-size: 1.75rem;
-                max-width: calc(100vw - 1.4rem);
+            .title-desktop {{
+                display: none;
+            }}
+            .title-mobile {{
+                display: inline;
+                font-size: 1.55rem;
+                font-weight: 600;
+            }}
+            [data-testid="stSidebar"] {{
+                width: min(22rem, 88vw) !important;
+                max-width: 88vw !important;
+            }}
+            [data-testid="stSidebar"] > div:first-child {{
+                width: min(22rem, 88vw) !important;
+                max-width: 88vw !important;
             }}
             h2, .stSubheader {{
                 font-size: 1.32rem !important;
@@ -367,12 +385,21 @@ def render_top_bar_title() -> None:
             .item-description {{
                 margin: -0.15rem 0 0.2rem 0 !important;
             }}
-            [data-testid="stExpander"] details[open] > div[role="region"] {{
-                display: none;
-            }}
         }}
         </style>
         """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_dashboard_title() -> None:
+    st.markdown(
+        (
+            "<h1 class='app-title'>"
+            "<span class='title-desktop'>The state and status of theory in psychological science</span>"
+            "<span class='title-mobile'>TheoryState Dashboard</span>"
+            "</h1>"
+        ),
         unsafe_allow_html=True,
     )
 
@@ -495,21 +522,37 @@ def render_sidebar_controls(dashboard_df: pd.DataFrame, filter_cols: dict[str, s
         else:
             options_by_key[key] = []
 
-    selections: dict[str, list[str]] = {}
-    with st.sidebar.expander("Filter results", expanded=False):
-        if st.button("Reset filters", use_container_width=True):
-            for key, options in options_by_key.items():
-                for option in options:
-                    st.session_state[f"filter_{key}_{option}"] = False
+    checkbox_keys: list[str] = []
+    for key, options in options_by_key.items():
+        for option in options:
+            state_key = f"filter_{key}_{option}"
+            checkbox_keys.append(state_key)
+            if state_key not in st.session_state:
+                st.session_state[state_key] = True
 
-        for key, cfg in FILTERS.items():
-            selected_values: list[str] = []
-            with st.expander(cfg["label"], expanded=False):
-                for option in options_by_key[key]:
-                    checked = st.checkbox(option, key=f"filter_{key}_{option}")
-                    if checked:
-                        selected_values.append(option)
-            selections[key] = selected_values
+    select_all_col, select_none_col = st.sidebar.columns(2)
+    select_all = select_all_col.button("Select all", use_container_width=True)
+    select_none = select_none_col.button("Select none", use_container_width=True)
+
+    if select_all:
+        for state_key in checkbox_keys:
+            st.session_state[state_key] = True
+    elif select_none:
+        for state_key in checkbox_keys:
+            st.session_state[state_key] = False
+
+    selections: dict[str, list[str]] = {}
+    for key, cfg in FILTERS.items():
+        selected_values: list[str] = []
+        with st.sidebar.expander(cfg["label"], expanded=False):
+            for option in options_by_key[key]:
+                checked = st.checkbox(
+                    option,
+                    key=f"filter_{key}_{option}",
+                )
+                if checked:
+                    selected_values.append(option)
+        selections[key] = [] if len(selected_values) == len(options_by_key[key]) else selected_values
 
     return page, selections
 
@@ -674,7 +717,7 @@ def render_item_level_overview_chart(*_args, **_kwargs) -> None:
 def render_dashboard_intro(expanded: bool) -> None:
     st.markdown(
         "<p class='mobile-intro' style='margin:0.05rem 0 0.2rem 0;'>"
-        "Results from the survey accompanying "
+        "This dashboard presents results from the survey accompanying the statement "
         "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
         "</p>",
         unsafe_allow_html=True,
@@ -989,6 +1032,7 @@ def main() -> None:
     filtered_long = apply_filters(long_df, filter_cols, selections)
     filtered_n = int(filtered_dashboard.shape[0])
     st.sidebar.markdown(f"**Filtered N:** {filtered_n}")
+    render_dashboard_title()
 
     if page == "Overview":
         render_overview(filtered_long, filtered_n)
