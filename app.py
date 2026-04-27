@@ -304,6 +304,13 @@ def render_top_bar_title() -> None:
             max-width: 100%;
         }}
         .app-title {{
+            display: none;
+        }}
+        .block-container {{
+            padding-top: 0.8rem;
+            max-width: 100%;
+        }}
+        .app-title {{
             margin: 0.15rem 0 0.35rem 0;
             font-size: 2.1rem;
             line-height: 1.12;
@@ -321,6 +328,13 @@ def render_top_bar_title() -> None:
         [data-testid="stSidebar"] {{
             max-width: min(22rem, 90vw);
         }}
+        [data-testid="stExpander"], [data-testid="stExpander"] * {{
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        [data-testid="stSidebar"] {{
+            max-width: min(22rem, 90vw);
+        }}
         [data-testid="stExpander"] summary p,
         [data-testid="stMarkdownContainer"] p,
         [data-testid="stMarkdownContainer"] li,
@@ -330,16 +344,28 @@ def render_top_bar_title() -> None:
         }}
         @media (max-width: 768px) {{
             .block-container {{
-                padding-top: 0.35rem;
+                padding-top: 0.95rem;
                 padding-bottom: 90px;
             }}
             .app-title {{
-                font-size: 1.8rem;
-                line-height: 1.15;
+                display: block;
+                font-size: 1.55rem;
+                line-height: 1.1;
                 max-width: 100%;
                 padding-right: 4.25rem;
-                margin-top: 0.1rem;
+                padding-top: 0.2rem;
+                margin-top: 0.2rem;
                 margin-bottom: 0.3rem;
+                font-weight: 600;
+                color: rgb(49, 51, 63);
+                white-space: normal;
+                word-break: normal;
+            }}
+            [data-testid="stHeader"] {{
+                height: 3.5rem;
+            }}
+            [data-testid="stHeader"]::after {{
+                content: "";
             }}
             [data-testid="stSidebar"] {{
                 width: min(22rem, 88vw) !important;
