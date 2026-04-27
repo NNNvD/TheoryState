@@ -300,15 +300,19 @@ def render_top_bar_title() -> None:
             overflow-x: hidden;
         }}
         .block-container {{
-            padding-top: 0.8rem;
+            padding-top: 4.55rem;
             max-width: 100%;
         }}
         .app-title {{
             display: none;
         }}
-        .block-container {{
-            padding-top: 0.8rem;
-            max-width: 100%;
+        [data-testid="stHeader"] {{
+            position: sticky;
+            top: 0;
+            height: 4.2rem;
+            background: white;
+            z-index: 999;
+            overflow: visible;
         }}
         .app-title {{
             margin: 0.15rem 0 0.35rem 0;
@@ -319,14 +323,10 @@ def render_top_bar_title() -> None:
             max-width: calc(100% - 0.25rem);
             padding-right: 0.5rem;
             white-space: normal;
-            word-break: normal;
-        }}
-        [data-testid="stExpander"], [data-testid="stExpander"] * {{
-            max-width: 100%;
-            box-sizing: border-box;
-        }}
-        [data-testid="stSidebar"] {{
-            max-width: min(22rem, 90vw);
+            max-width: min(82vw, 1100px);
+            line-height: 1.1;
+            pointer-events: none;
+            z-index: 1000;
         }}
         [data-testid="stExpander"], [data-testid="stExpander"] * {{
             max-width: 100%;
