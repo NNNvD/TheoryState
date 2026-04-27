@@ -210,9 +210,6 @@ TABLE2_QUESTION_BLOCKS = [
 ITEM_BLOCK_BAR_HEIGHT = 150
 WITHIN_GROUP_GAP_REM = 0.35
 BETWEEN_GROUP_GAP_REM = 1.8
-APP_TITLE = "The state and status of theory in psychological science"
-
-
 def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text)).strip().lower()
 
@@ -300,33 +297,22 @@ def render_top_bar_title() -> None:
             overflow-x: hidden;
         }}
         .block-container {{
-            padding-top: 4.55rem;
+            padding-top: 0.9rem;
             max-width: 100%;
         }}
         .app-title {{
-            display: none;
-        }}
-        [data-testid="stHeader"] {{
-            position: sticky;
-            top: 0;
-            height: 4.2rem;
-            background: white;
-            z-index: 999;
-            overflow: visible;
-        }}
-        .app-title {{
-            margin: 0.15rem 0 0.35rem 0;
-            font-size: 2.1rem;
-            line-height: 1.12;
-            font-weight: 600;
-            color: rgb(49, 51, 63);
-            max-width: calc(100% - 0.25rem);
-            padding-right: 0.5rem;
-            white-space: normal;
-            max-width: min(82vw, 1100px);
+            display: block;
+            margin: 0.05rem 0 1.35rem 0;
             line-height: 1.1;
-            pointer-events: none;
-            z-index: 1000;
+            color: rgb(49, 51, 63);
+        }}
+        .title-desktop {{
+            display: inline;
+            font-size: 2.9rem;
+            font-weight: 700;
+        }}
+        .title-mobile {{
+            display: none;
         }}
         [data-testid="stExpander"], [data-testid="stExpander"] * {{
             max-width: 100%;
@@ -348,24 +334,19 @@ def render_top_bar_title() -> None:
                 padding-bottom: 90px;
             }}
             .app-title {{
-                display: block;
-                font-size: 1.55rem;
-                line-height: 1.1;
+                margin: 0.2rem 0 0.35rem 0;
                 max-width: 100%;
                 padding-right: 4.25rem;
                 padding-top: 0.2rem;
-                margin-top: 0.2rem;
-                margin-bottom: 0.3rem;
-                font-weight: 600;
-                color: rgb(49, 51, 63);
                 white-space: normal;
-                word-break: normal;
             }}
-            [data-testid="stHeader"] {{
-                height: 3.5rem;
+            .title-desktop {{
+                display: none;
             }}
-            [data-testid="stHeader"]::after {{
-                content: "";
+            .title-mobile {{
+                display: inline;
+                font-size: 1.55rem;
+                font-weight: 600;
             }}
             [data-testid="stSidebar"] {{
                 width: min(22rem, 88vw) !important;
@@ -412,7 +393,15 @@ def render_top_bar_title() -> None:
 
 
 def render_dashboard_title() -> None:
-    st.markdown("<h1 class='app-title'>TheoryState Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown(
+        (
+            "<h1 class='app-title'>"
+            "<span class='title-desktop'>The state and status of theory in psychological science</span>"
+            "<span class='title-mobile'>TheoryState Dashboard</span>"
+            "</h1>"
+        ),
+        unsafe_allow_html=True,
+    )
 
 
 def mean_to_score_100(series: pd.Series) -> pd.Series:
@@ -728,7 +717,7 @@ def render_item_level_overview_chart(*_args, **_kwargs) -> None:
 def render_dashboard_intro(expanded: bool) -> None:
     st.markdown(
         "<p class='mobile-intro' style='margin:0.05rem 0 0.2rem 0;'>"
-        "Results from the survey accompanying "
+        "This dashboard presents results from the survey accompanying the statement "
         "<a href='https://doi.org/10.31234/osf.io/2fjx4_v2'><em>The state and status of theory in psychological science</em></a>."
         "</p>",
         unsafe_allow_html=True,
