@@ -314,14 +314,14 @@ def render_top_bar_title() -> None:
             z-index: 999;
             overflow: visible;
         }}
-        [data-testid="stHeader"]::after {{
-            content: "{APP_TITLE}";
-            position: absolute;
-            left: 3.5rem;
-            top: 0.8rem;
+        .app-title {{
+            margin: 0.15rem 0 0.35rem 0;
             font-size: 2.1rem;
+            line-height: 1.12;
             font-weight: 600;
             color: rgb(49, 51, 63);
+            max-width: calc(100% - 0.25rem);
+            padding-right: 0.5rem;
             white-space: normal;
             max-width: min(82vw, 1100px);
             line-height: 1.1;
