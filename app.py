@@ -534,11 +534,10 @@ def render_sidebar_controls(dashboard_df: pd.DataFrame, filter_cols: dict[str, s
                 checked = st.checkbox(
                     option,
                     key=f"filter_{key}_{option}",
-                    help=cfg["source_prompt"],
                 )
                 if checked:
                     selected_values.append(option)
-        selections[key] = selected_values
+        selections[key] = [] if len(selected_values) == len(options_by_key[key]) else selected_values
 
     return page, selections
 
