@@ -104,4 +104,49 @@ If you see “You do not have access to this app or it does not exist”, verify
   - set source to **Deploy from a branch** and folder **/(root)** (this repo now includes a root `index.html` redirect).
 - Ensure the Pages URL opens `/index.html` and not a cached README view.
 
+## Public launch checklist (recommended before announcement)
+Before sharing broadly, verify:
+- the Streamlit app URL is live and public
+- `python scripts/clean_data.py` completes without errors
+- `data/derived/` files are refreshed from the latest `data/raw/` export
+- dashboard filters render with realistic defaults (no empty starting views)
+- Methods / Data Quality section still matches the current cleaning script
+- README links (repo, app URL, Pages URL) all work in an incognito window
+
+## Sharing the dashboard
+Use these links in announcements:
+- **Primary app URL**: your deployed `https://<app-name>.streamlit.app/`
+- **Project repository**: this GitHub repo (methods + reproducible pipeline)
+- **Optional landing page**: GitHub Pages launcher URL from `docs/index.html`
+
+Suggested one-line description:
+> “TheoryState is an interactive dashboard summarizing survey responses about theory development in psychological science, with a transparent reproducible cleaning pipeline.”
+
+## Updating for a new wave/year
+1. Add the new Microsoft Forms CSV export to `data/raw/`.
+2. Run:
+   ```bash
+   python scripts/clean_data.py
+   ```
+3. Confirm updated outputs in `data/derived/`:
+   - `responses_dashboard_ready.csv`
+   - `responses_numeric_only.csv`
+   - `responses_long.csv`
+   - `item_dictionary.csv`
+   - `cleaning_summary.csv`
+4. Launch locally:
+   ```bash
+   streamlit run app.py
+   ```
+5. Spot-check Overview, Table 1, Table 2, and Methods pages.
+6. Commit the refreshed derived files plus any code/docs changes.
+
+## Recommended repository additions (optional but high-value)
+To make the project easier for outside users:
+- `LICENSE` (clear reuse terms)
+- `CONTRIBUTING.md` (how to propose fixes/updates)
+- `CHANGELOG.md` (track data and app changes over time)
+- `CITATION.cff` (how to cite the dashboard/pipeline)
+
+These are not required for functionality, but they improve trust and maintainability for a public launch.
 
