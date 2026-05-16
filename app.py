@@ -16,6 +16,7 @@ DERIVED_DIR = Path("data/derived")
 DASHBOARD_FILE = DERIVED_DIR / "responses_dashboard_ready.csv"
 LONG_FILE = DERIVED_DIR / "responses_long.csv"
 ITEM_DICTIONARY_FILE = DERIVED_DIR / "item_dictionary.csv"
+CLEANING_SUMMARY_FILE = DERIVED_DIR / "cleaning_summary.csv"
 
 FILTERS = {
     "work_status": {
@@ -409,12 +410,13 @@ def mean_to_score_100(series: pd.Series) -> pd.Series:
     return ((values - 1) / 6) * 100
 
 
-def get_data_version() -> tuple[int, int, int]:
-    """Return file modification times so cache refreshes when data files change."""
+def get_data_version() -> tuple[int, int, int, int]:
+    """Return file modification times so cache refreshes when derived data files change."""
     return (
         int(DASHBOARD_FILE.stat().st_mtime_ns),
         int(LONG_FILE.stat().st_mtime_ns),
         int(ITEM_DICTIONARY_FILE.stat().st_mtime_ns),
+        int(CLEANING_SUMMARY_FILE.stat().st_mtime_ns) if CLEANING_SUMMARY_FILE.exists() else 0,
     )
 
 
@@ -445,7 +447,7 @@ def canonicalize_subfield_values(df: pd.DataFrame) -> pd.DataFrame:
 
 
 @st.cache_data
-def load_data(_data_version: tuple[int, int, int]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_data(_data_version: tuple[int, int, int, int]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     dashboard_df = pd.read_csv(DASHBOARD_FILE)
     long_df = pd.read_csv(LONG_FILE)
     item_dict = pd.read_csv(ITEM_DICTIONARY_FILE)
@@ -453,6 +455,17 @@ def load_data(_data_version: tuple[int, int, int]) -> tuple[pd.DataFrame, pd.Dat
     dashboard_df = canonicalize_subfield_values(dashboard_df)
     long_df = canonicalize_subfield_values(long_df)
     return dashboard_df, long_df, item_dict
+
+
+@st.cache_data
+def load_cleaning_summary(_summary_mtime_ns: int) -> dict[str, str]:
+    """Load cleaning summary key/value pairs if present."""
+    if not CLEANING_SUMMARY_FILE.exists():
+        return {}
+    summary_df = pd.read_csv(CLEANING_SUMMARY_FILE)
+    if not {"metric", "value"}.issubset(summary_df.columns):
+        return {}
+    return {str(row["metric"]): str(row["value"]) for _, row in summary_df.iterrows()}
 
 
 def find_filter_columns(df: pd.DataFrame) -> dict[str, str]:
@@ -533,8 +546,9 @@ def render_sidebar_controls(dashboard_df: pd.DataFrame, filter_cols: dict[str, s
     select_all_col, select_none_col = st.sidebar.columns(2)
     select_all = select_all_col.button("Select all", use_container_width=True)
     select_none = select_none_col.button("Select none", use_container_width=True)
+    reset_filters = st.sidebar.button("Reset filters", use_container_width=True)
 
-    if select_all:
+    if reset_filters or select_all:
         for state_key in checkbox_keys:
             st.session_state[state_key] = True
     elif select_none:
@@ -837,6 +851,10 @@ def render_overview(filtered_long: pd.DataFrame, filtered_n: int) -> None:
         return
 
     st.markdown("### Overall assessment of problems in theory development")
+    st.caption(
+        "Participant N reflects respondents passing quality-control filters. "
+        "Response N may be lower for some questions because of missing/skipped item responses."
+    )
     st.write(
         "This section covers overall survey questions related to possible problems in the current state of theory development in psychology. "
         "These questions concern the diagnoses listed in Table 1 of the statement, such as **weakly specified theories**, "
@@ -1031,7 +1049,30 @@ def main() -> None:
     filtered_dashboard = apply_filters(dashboard_df, filter_cols, selections)
     filtered_long = apply_filters(long_df, filter_cols, selections)
     filtered_n = int(filtered_dashboard.shape[0])
+    total_n = int(dashboard_df.shape[0])
     st.sidebar.markdown(f"**Filtered N:** {filtered_n}")
+    st.sidebar.caption(f"All QC-passed respondents in file: {total_n}")
+    summary_mtime_ns = int(CLEANING_SUMMARY_FILE.stat().st_mtime_ns) if CLEANING_SUMMARY_FILE.exists() else 0
+    summary = load_cleaning_summary(summary_mtime_ns)
+    qc_total_text = summary.get("rows_after_qc")
+    qc_total: int | None = None
+    if qc_total_text is not None:
+        try:
+            qc_total = int(float(qc_total_text))
+        except ValueError:
+            qc_total = None
+    if qc_total is not None:
+        if qc_total != total_n:
+            st.sidebar.error(
+                "Derived files are out of sync: cleaning summary and dashboard row counts differ. "
+                "Run `python scripts/clean_data.py` and reload the app."
+            )
+        else:
+            st.sidebar.caption(f"QC-passed total: {qc_total}")
+    active_filters = [key for key, values in selections.items() if len(values) > 0]
+    if active_filters:
+        labels = ", ".join(FILTERS[key]["label"] for key in active_filters)
+        st.sidebar.warning(f"Active filters: {labels}")
     render_dashboard_title()
 
     if page == "Overview":
