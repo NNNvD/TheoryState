@@ -545,8 +545,9 @@ def render_sidebar_controls(dashboard_df: pd.DataFrame, filter_cols: dict[str, s
     select_all_col, select_none_col = st.sidebar.columns(2)
     select_all = select_all_col.button("Select all", use_container_width=True)
     select_none = select_none_col.button("Select none", use_container_width=True)
+    reset_filters = st.sidebar.button("Reset filters", use_container_width=True)
 
-    if select_all:
+    if reset_filters or select_all:
         for state_key in checkbox_keys:
             st.session_state[state_key] = True
     elif select_none:
@@ -1047,11 +1048,17 @@ def main() -> None:
     filtered_dashboard = apply_filters(dashboard_df, filter_cols, selections)
     filtered_long = apply_filters(long_df, filter_cols, selections)
     filtered_n = int(filtered_dashboard.shape[0])
+    total_n = int(dashboard_df.shape[0])
     summary = load_cleaning_summary()
     qc_total = summary.get("rows_after_qc")
     st.sidebar.markdown(f"**Filtered N:** {filtered_n}")
+    st.sidebar.caption(f"All QC-passed respondents in file: {total_n}")
     if qc_total is not None:
         st.sidebar.caption(f"QC-passed total: {qc_total}")
+    active_filters = [key for key, values in selections.items() if len(values) > 0]
+    if active_filters:
+        labels = ", ".join(FILTERS[key]["label"] for key in active_filters)
+        st.sidebar.warning(f"Active filters: {labels}")
     render_dashboard_title()
 
     if page == "Overview":
