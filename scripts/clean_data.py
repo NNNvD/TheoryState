@@ -55,13 +55,17 @@ def _normalize(text: str) -> str:
 
 
 def find_raw_file() -> Path | None:
-    """Return the preferred raw export path if present, otherwise first CSV in data/raw."""
-    if DEFAULT_RAW_FILE.exists():
-        return DEFAULT_RAW_FILE
+    """Return the preferred raw export path, prioritizing the newest CSV in ``data/raw``.
+
+    This keeps the existing default filename behavior for single-file workflows,
+    while allowing yearly refreshes that use a new filename.
+    """
     if RAW_DIR.exists():
         candidates = sorted(RAW_DIR.glob("*.csv"))
         if candidates:
-            return candidates[0]
+            if DEFAULT_RAW_FILE.exists() and len(candidates) == 1:
+                return DEFAULT_RAW_FILE
+            return max(candidates, key=lambda path: path.stat().st_mtime)
     return None
 
 
