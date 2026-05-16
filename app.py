@@ -1049,12 +1049,24 @@ def main() -> None:
     filtered_long = apply_filters(long_df, filter_cols, selections)
     filtered_n = int(filtered_dashboard.shape[0])
     total_n = int(dashboard_df.shape[0])
-    summary = load_cleaning_summary()
-    qc_total = summary.get("rows_after_qc")
     st.sidebar.markdown(f"**Filtered N:** {filtered_n}")
     st.sidebar.caption(f"All QC-passed respondents in file: {total_n}")
+    summary = load_cleaning_summary()
+    qc_total_text = summary.get("rows_after_qc")
+    qc_total: int | None = None
+    if qc_total_text is not None:
+        try:
+            qc_total = int(float(qc_total_text))
+        except ValueError:
+            qc_total = None
     if qc_total is not None:
-        st.sidebar.caption(f"QC-passed total: {qc_total}")
+        if qc_total != total_n:
+            st.sidebar.error(
+                "Derived files are out of sync: cleaning summary and dashboard row counts differ. "
+                "Run `python scripts/clean_data.py` and reload the app."
+            )
+        else:
+            st.sidebar.caption(f"QC-passed total: {qc_total}")
     active_filters = [key for key, values in selections.items() if len(values) > 0]
     if active_filters:
         labels = ", ".join(FILTERS[key]["label"] for key in active_filters)
