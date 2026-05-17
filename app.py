@@ -410,12 +410,13 @@ def mean_to_score_100(series: pd.Series) -> pd.Series:
     return ((values - 1) / 6) * 100
 
 
-def get_data_version() -> tuple[int, int, int]:
-    """Return file modification times so cache refreshes when data files change."""
+def get_data_version() -> tuple[int, int, int, int]:
+    """Return file modification times so cache refreshes when derived data files change."""
     return (
         int(DASHBOARD_FILE.stat().st_mtime_ns),
         int(LONG_FILE.stat().st_mtime_ns),
         int(ITEM_DICTIONARY_FILE.stat().st_mtime_ns),
+        int(CLEANING_SUMMARY_FILE.stat().st_mtime_ns) if CLEANING_SUMMARY_FILE.exists() else 0,
     )
 
 
@@ -446,7 +447,7 @@ def canonicalize_subfield_values(df: pd.DataFrame) -> pd.DataFrame:
 
 
 @st.cache_data
-def load_data(_data_version: tuple[int, int, int]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_data(_data_version: tuple[int, int, int, int]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     dashboard_df = pd.read_csv(DASHBOARD_FILE)
     long_df = pd.read_csv(LONG_FILE)
     item_dict = pd.read_csv(ITEM_DICTIONARY_FILE)
@@ -457,7 +458,7 @@ def load_data(_data_version: tuple[int, int, int]) -> tuple[pd.DataFrame, pd.Dat
 
 
 @st.cache_data
-def load_cleaning_summary() -> dict[str, str]:
+def load_cleaning_summary(_summary_mtime_ns: int) -> dict[str, str]:
     """Load cleaning summary key/value pairs if present."""
     if not CLEANING_SUMMARY_FILE.exists():
         return {}
@@ -1051,7 +1052,8 @@ def main() -> None:
     total_n = int(dashboard_df.shape[0])
     st.sidebar.markdown(f"**Filtered N:** {filtered_n}")
     st.sidebar.caption(f"All QC-passed respondents in file: {total_n}")
-    summary = load_cleaning_summary()
+    summary_mtime_ns = int(CLEANING_SUMMARY_FILE.stat().st_mtime_ns) if CLEANING_SUMMARY_FILE.exists() else 0
+    summary = load_cleaning_summary(summary_mtime_ns)
     qc_total_text = summary.get("rows_after_qc")
     qc_total: int | None = None
     if qc_total_text is not None:
