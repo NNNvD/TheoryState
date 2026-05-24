@@ -1076,7 +1076,7 @@ def main() -> None:
     filtered_dashboard = apply_filters(dashboard_df, filter_cols, selections)
     filtered_long = apply_filters(long_df, filter_cols, selections)
     filtered_n = int(filtered_dashboard.shape[0])
-    st.sidebar.markdown(f"**Filtered N:** {filtered_n}")
+    st.sidebar.markdown(f"**N = {filtered_n}**")
     active_filters = [key for key, values in selections.items() if len(values) > 0]
     if active_filters:
         labels = ", ".join(FILTERS[key]["label"] for key in active_filters)
