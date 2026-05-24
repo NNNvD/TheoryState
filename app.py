@@ -6,6 +6,7 @@ import re
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from scripts.clean_data import main as run_cleaning_pipeline
 
 st.set_page_config(
     page_title="The state and status of theory in psychological science",
@@ -17,6 +18,7 @@ DASHBOARD_FILE = DERIVED_DIR / "responses_dashboard_ready.csv"
 LONG_FILE = DERIVED_DIR / "responses_long.csv"
 ITEM_DICTIONARY_FILE = DERIVED_DIR / "item_dictionary.csv"
 CLEANING_SUMMARY_FILE = DERIVED_DIR / "cleaning_summary.csv"
+RAW_DIR = Path("data/raw")
 
 FILTERS = {
     "work_status": {
@@ -466,6 +468,30 @@ def load_cleaning_summary(_summary_mtime_ns: int) -> dict[str, str]:
     if not {"metric", "value"}.issubset(summary_df.columns):
         return {}
     return {str(row["metric"]): str(row["value"]) for _, row in summary_df.iterrows()}
+
+
+def get_latest_raw_mtime_ns() -> int:
+    """Return mtime in ns for the newest raw CSV, or 0 if none exist."""
+    if not RAW_DIR.exists():
+        return 0
+    raw_files = list(RAW_DIR.glob("*.csv"))
+    if not raw_files:
+        return 0
+    return int(max(path.stat().st_mtime_ns for path in raw_files))
+
+
+def ensure_fresh_derived_data() -> None:
+    """Regenerate derived files when missing or older than raw exports."""
+    required = [DASHBOARD_FILE, LONG_FILE, ITEM_DICTIONARY_FILE, CLEANING_SUMMARY_FILE]
+    missing_required = [path for path in required if not path.exists()]
+    latest_raw_mtime_ns = get_latest_raw_mtime_ns()
+    derived_mtime_ns = min((int(path.stat().st_mtime_ns) for path in required if path.exists()), default=0)
+    should_refresh = bool(missing_required) or (latest_raw_mtime_ns > 0 and latest_raw_mtime_ns > derived_mtime_ns)
+
+    if should_refresh:
+        run_cleaning_pipeline()
+        load_data.clear()
+        load_cleaning_summary.clear()
 
 
 def find_filter_columns(df: pd.DataFrame) -> dict[str, str]:
@@ -1034,6 +1060,7 @@ def render_table2(filtered_long: pd.DataFrame, filtered_n: int, item_names: dict
 
 def main() -> None:
     render_top_bar_title()
+    ensure_fresh_derived_data()
 
     required = [DASHBOARD_FILE, LONG_FILE, ITEM_DICTIONARY_FILE]
     missing = [str(p) for p in required if not p.exists()]
@@ -1049,26 +1076,7 @@ def main() -> None:
     filtered_dashboard = apply_filters(dashboard_df, filter_cols, selections)
     filtered_long = apply_filters(long_df, filter_cols, selections)
     filtered_n = int(filtered_dashboard.shape[0])
-    total_n = int(dashboard_df.shape[0])
-    st.sidebar.markdown(f"**Filtered N:** {filtered_n}")
-    st.sidebar.caption(f"All QC-passed respondents in file: {total_n}")
-    summary_mtime_ns = int(CLEANING_SUMMARY_FILE.stat().st_mtime_ns) if CLEANING_SUMMARY_FILE.exists() else 0
-    summary = load_cleaning_summary(summary_mtime_ns)
-    qc_total_text = summary.get("rows_after_qc")
-    qc_total: int | None = None
-    if qc_total_text is not None:
-        try:
-            qc_total = int(float(qc_total_text))
-        except ValueError:
-            qc_total = None
-    if qc_total is not None:
-        if qc_total != total_n:
-            st.sidebar.error(
-                "Derived files are out of sync: cleaning summary and dashboard row counts differ. "
-                "Run `python scripts/clean_data.py` and reload the app."
-            )
-        else:
-            st.sidebar.caption(f"QC-passed total: {qc_total}")
+    st.sidebar.markdown(f"**N = {filtered_n}**")
     active_filters = [key for key, values in selections.items() if len(values) > 0]
     if active_filters:
         labels = ", ".join(FILTERS[key]["label"] for key in active_filters)
