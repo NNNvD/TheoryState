@@ -64,6 +64,7 @@ A workflow is included at `.github/workflows/clean-data.yml`.
 It runs automatically when:
 - files under `data/raw/` change, or
 - `scripts/clean_data.py` changes.
+- every day at **06:00 UTC** via a scheduled GitHub Actions cron job.
 
 You can also run it manually from the Actions tab (`workflow_dispatch`).
 
