@@ -48,6 +48,9 @@ Running `python scripts/clean_data.py` generates:
 - `data/derived/item_dictionary.csv` — stable item mapping from raw columns to item metadata
 - `data/derived/cleaning_summary.csv` — row counts and output dimensions
 
+### Latest data refresh
+As of **May 24, 2026**, the most recent raw export includes **30,124** rows and the QC-filtered dashboard dataset includes **122** participants (`N=122`).
+
 ## Dashboard sections
 The dashboard includes:
 - **Overview**: raw rows, rows after QC, rows in current filtered view, and background breakdowns
@@ -61,6 +64,7 @@ A workflow is included at `.github/workflows/clean-data.yml`.
 It runs automatically when:
 - files under `data/raw/` change, or
 - `scripts/clean_data.py` changes.
+- every day at **06:00 UTC** via a scheduled GitHub Actions cron job.
 
 You can also run it manually from the Actions tab (`workflow_dispatch`).
 
@@ -149,4 +153,3 @@ To make the project easier for outside users:
 - `CITATION.cff` (how to cite the dashboard/pipeline)
 
 These are not required for functionality, but they improve trust and maintainability for a public launch.
-
