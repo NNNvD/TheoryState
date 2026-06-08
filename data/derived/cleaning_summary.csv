@@ -1,8 +1,8 @@
 metric,value
 data_source,raw
-raw_rows,30235
-rows_after_qc,231
+raw_rows,30246
+rows_after_qc,242
 dashboard_columns,53
 numeric_columns,49
-long_rows,11088
+long_rows,11616
 unique_items,13
